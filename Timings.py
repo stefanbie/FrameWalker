@@ -1,9 +1,7 @@
-import csv
 from datetime import datetime
 import json
 from selenium.common.exceptions import StaleElementReferenceException
 from selenium.common.exceptions import NoSuchElementException
-import os
 import time
 
 driver = None
@@ -29,8 +27,6 @@ def init(_driver, _logFileDir, _sleepBeforeReport):
     sleepBeforeReport = _sleepBeforeReport
     setLogFilePath()
 
-def jsonWrite(timing):
-    print(timing)
 
 def setLogFilePath():
     '''Sets tha path to the log file'''
@@ -44,6 +40,29 @@ def setLogFilePath():
         logFilePath = logFileDir + '\\' + logTimeStamp + '.csv'
 
 
+def jsonWrite(timing):
+    print(timing)
+
+
+def waitForResourcesLoaded():
+    lastNbrOfResources = 0
+    while True:
+        time.sleep(3)
+        nbrOfResources = json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntries().length)"))
+        if nbrOfResources > lastNbrOfResources:
+            lastNbrOfResources = nbrOfResources
+        else:
+            break
+
+def getAjaxResources():
+    xmlResources = []
+    resources = json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntries())"))
+    for resource in resources:
+        if resource.get("initiatorType") == "xmlhttprequest":
+            xmlResources.append(resource)
+    return xmlResources
+
+
 def report(_transaction):
     global frameList
     global transactionTimeStamp
@@ -52,8 +71,7 @@ def report(_transaction):
     transaction = _transaction
     transactionTimeStamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     iteration += 1
-    time.sleep(sleepBeforeReport)
-
+    waitForResourcesLoaded()
     driver.switch_to.default_content()
     timing = saveTimings()
     jsonWrite(timing)
