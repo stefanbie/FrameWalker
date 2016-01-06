@@ -1,24 +1,23 @@
 from peewee import *
-from datetime import datetime
 #pip install peewee
 #pip install PyMySQL
 # In %PROGRAMDATA%\MySQL\MySQL Server X.x\my.ini, remove STRICT_TRANS_TABLES and restart MySQL servcie
 
 DB = MySQLDatabase("frameway", host="127.0.0.1", port=3306, user="dbuser", passwd="dbuser")
+timeStampFormat = '%Y-%m-%d %H:%M:%S.%f'
 
 class BaseModel(Model):
-    """A base model that will use our MySQL database"""
     class Meta:
         database = DB
 
 class TestCase(BaseModel):
-    timeStamp = DateTimeField('%Y-%m-%d %H:%M:%S.%f')
+    timeStamp = DateTimeField(timeStampFormat)
     comment = TextField()
 
 class Transaction(BaseModel):
     testCase = ForeignKeyField(TestCase, related_name='transaction')
     name = CharField()
-    timeStamp = DateTimeField('%Y-%m-%d %H:%M:%S.%f')
+    timeStamp = DateTimeField(timeStampFormat)
     iteration = IntegerField()
 
 class Frame(BaseModel):
@@ -26,31 +25,31 @@ class Frame(BaseModel):
     url = TextField()
 
 class Timing(BaseModel):
-    frame = ForeignKeyField(Frame, related_name='timing')
-    connectEnd = IntegerField()
-    connectStart = IntegerField()
-    domComplete = IntegerField()
-    domContentLoadedEventEnd = IntegerField()
-    domContentLoadedEventStart = IntegerField()
-    domInteractive = IntegerField()
-    domLoading = IntegerField()
-    domainLookupEnd = IntegerField()
-    domainLookupStart = IntegerField()
-    fetchStart = IntegerField()
-    loadEventEnd = IntegerField()
-    loadEventStart = IntegerField()
-    navigationStart = IntegerField()
-    redirectEnd = IntegerField()
-    redirectStart = IntegerField()
-    requestStart = IntegerField()
-    responseEnd = IntegerField()
-    responseStart = IntegerField()
-    secureConnectionStart = IntegerField()
-    unloadEventEnd = IntegerField()
-    unloadEventStart = IntegerField()
+    frame = ForeignKeyField(Frame, default=None, null=True, related_name='timing')
+    connectEnd = DoubleField()
+    connectStart = DoubleField()
+    domComplete = DoubleField()
+    domContentLoadedEventEnd = DoubleField()
+    domContentLoadedEventStart = DoubleField()
+    domInteractive = DoubleField()
+    domLoading = DoubleField()
+    domainLookupEnd = DoubleField()
+    domainLookupStart = DoubleField()
+    fetchStart = DoubleField()
+    loadEventEnd = DoubleField()
+    loadEventStart = DoubleField()
+    navigationStart = DoubleField()
+    redirectEnd = DoubleField()
+    redirectStart = DoubleField()
+    requestStart = DoubleField()
+    responseEnd = DoubleField()
+    responseStart = DoubleField()
+    secureConnectionStart = DoubleField()
+    unloadEventEnd = DoubleField()
+    unloadEventStart = DoubleField()
 
-class ResourceTiming(BaseModel):
-    frame = ForeignKeyField(Frame,default=None, null=True, related_name='resource')
+class Resource(BaseModel):
+    frame = ForeignKeyField(Frame, default=None, null=True, related_name='resource')
     connectEnd = FloatField()
     connectStart = FloatField()
     domainLookupEnd = FloatField()
@@ -59,7 +58,7 @@ class ResourceTiming(BaseModel):
     entryType = CharField()
     fetchStart = FloatField()
     initiatorType = CharField()
-    name = TextField(default="default")
+    name = TextField()
     redirectEnd = FloatField()
     redirectStart = FloatField()
     requestStart = FloatField()
@@ -78,17 +77,27 @@ def insertTransaction(testCaseID, timeStamp, name, iteration):
 def insertFrame(transactionID, url):
     return Frame.create(transaction = transactionID, url = url)
 
-def insertRecourceTimings(frameID, recourseTimings):
-    for item in recourseTimings:
-        item.update( {"frame":frameID})
-    with DB.atomic():
-        return ResourceTiming.insert_many(recourseTimings).execute()
+def insertTiming(frameID, timing):
+    timing["frame"] = frameID
+    return Timing.insert(timing).execute()
+
+def insertRecources(frameID, recourse):
+    if len(recourse) > 0:
+        for item in recourse:
+            item.update( {"frame":frameID})
+        with DB.atomic():
+            return Resource.insert_many(recourse).execute()
+    return None
 
 def init():
     DB.connect()
+    if not TestCase.table_exists():
+        addTables()
 
 def destroy():
     DB.close()
 
-#DB.create_tables([Frame, ResourceTiming, TestCase, Transaction])
+def addTables():
+    DB.create_tables([TestCase, Transaction, Frame, Resource, Timing])
+
 

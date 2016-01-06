@@ -78,7 +78,9 @@ def saveTimings():
     '''Extracts data from browser and decides what is relevant to save'''
     frame = DB.insertFrame(transaction.id, driver.current_url)
     entries = getRecources()
-    DB.insertRecourceTimings(frame.id, entries)
+    timing = getTiming()
+    DB.insertRecources(frame.id, entries)
+    DB.insertTiming(frame.id, timing)
 
 
 def timeStamp():
