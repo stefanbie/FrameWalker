@@ -1,47 +1,23 @@
+import DB
 from datetime import datetime
 import json
-from selenium.common.exceptions import StaleElementReferenceException
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import *
 import time
 
 driver = None
-logTimeStamp = ''
 iteration = 0
-transaction = ''
-day = ''
 transactionTimeStamp = ''
-logFileDir = ''
-logFilePath = ''
-frameList = []
-sleepBeforeReport = 0
-ajax = False
 mainNavigationStart = 0
-startTimes = {}
+#startTimes = {}
+testCase = None
+transaction = None
 
-def init(_driver, _logFileDir, _sleepBeforeReport):
+def init(_driver, testCaseComment):
     global driver
-    global logFileDir
-    global sleepBeforeReport
+    global testCase
     driver = _driver
-    logFileDir = _logFileDir
-    sleepBeforeReport = _sleepBeforeReport
-    setLogFilePath()
-
-
-def setLogFilePath():
-    '''Sets tha path to the log file'''
-    global logTimeStamp
-    global day
-    global logFilePath
-    timeStamp = datetime.now()
-    if timeStamp.strftime('%Y-%m-%d_%H-%M-%S')[8:10] != day:
-        logTimeStamp = timeStamp.strftime('%Y-%m-%d_%H-%M-%S')
-        day = logTimeStamp[8:10]
-        logFilePath = logFileDir + '\\' + logTimeStamp + '.csv'
-
-
-def jsonWrite(timing):
-    print(timing)
+    DB.init()
+    testCase = DB.insertTestCase(timeStamp(), testCaseComment)
 
 
 def waitForResourcesLoaded():
@@ -54,6 +30,7 @@ def waitForResourcesLoaded():
         else:
             break
 
+
 def getAjaxResources():
     xmlResources = []
     resources = json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntries())"))
@@ -63,18 +40,16 @@ def getAjaxResources():
     return xmlResources
 
 
-def report(_transaction):
-    global frameList
+def report(transactionName):
     global transactionTimeStamp
     global iteration
     global transaction
-    transaction = _transaction
-    transactionTimeStamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     iteration += 1
+    transaction = DB.insertTransaction(testCase.id, timeStamp(), transactionName, iteration)
+    #transactionTimeStamp = datetime.now() #.strftime('%Y-%m-%d_%H-%M-%S')
     waitForResourcesLoaded()
     driver.switch_to.default_content()
-    timing = saveTimings()
-    jsonWrite(timing)
+    saveTimings()
     reportTimingsRecursive("Main")
     driver.execute_script("window.performance.clearResourceTimings()")
 
@@ -88,23 +63,29 @@ def  reportTimingsRecursive(parent):
     for iFrame in iFrames:
         try:
             driver.switch_to.frame(iFrame)
-        except StaleElementReferenceException:
+        except Exception:
             driver.execute_script("window.performance.clearResourceTimings()")
             return
-        timings = saveTimings()
+        saveTimings()
         driver.execute_script("window.performance.clearResourceTimings()")
         currentWindow = driver.current_window_handle
         reportTimingsRecursive(iFrame.id)
         driver.switch_to.window(currentWindow)
 
+
 def saveTimings():
+    global driver
     '''Extracts data from browser and decides what is relevant to save'''
-    global frameList
-    global ajax
-    global startTimes
-    global mainNavigationStart
+    frame = DB.insertFrame(transaction.id, driver.current_url)
+    entries = getRecources()
+    DB.insertRecourceTimings(frame.id, entries)
 
-    timing = json.loads(driver.execute_script("return JSON.stringify(window.performance.timing)"))
-    entries = json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntries())"))
 
-    return timing
+def timeStamp():
+    return datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
+
+def getRecources():
+    return json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))
+
+def getTiming():
+    return json.loads(driver.execute_script("return JSON.stringify(window.performance.timing)"))

@@ -1,73 +1,94 @@
-import peewee as pw
+from peewee import *
+from datetime import datetime
 #pip install peewee
 #pip install PyMySQL
+# In %PROGRAMDATA%\MySQL\MySQL Server X.x\my.ini, remove STRICT_TRANS_TABLES and restart MySQL servcie
 
-myDB = pw.MySQLDatabase("frameway", host="127.0.0.1", port=3306, user="dbuser", passwd="dbuser")
+DB = MySQLDatabase("frameway", host="127.0.0.1", port=3306, user="dbuser", passwd="dbuser")
 
-class MySQLModel(pw.Model):
+class BaseModel(Model):
     """A base model that will use our MySQL database"""
     class Meta:
-        database = myDB
+        database = DB
 
-class Frame(MySQLModel):
-    frameId = pw.CharField()
-    name = pw.CharField()
-    url = pw.CharField()
-    class Meta:
-        order_by = ('name',)
+class TestCase(BaseModel):
+    timeStamp = DateTimeField('%Y-%m-%d %H:%M:%S.%f')
+    comment = TextField()
 
-class Timing(MySQLModel):
-    frame = pw.ForeignKeyField(Frame, related_name='timings')
-    connectEnd = pw.IntegerField()
-    connectStart = pw.IntegerField()
-    domComplete = pw.IntegerField()
-    domContentLoadedEventEnd = pw.IntegerField()
-    domContentLoadedEventStart = pw.IntegerField()
-    domInteractive = pw.IntegerField()
-    domLoading = pw.IntegerField()
-    domainLookupEnd = pw.IntegerField()
-    domainLookupStart = pw.IntegerField()
-    fetchStart = pw.IntegerField()
-    loadEventEnd = pw.IntegerField()
-    loadEventStart = pw.IntegerField()
-    navigationStart = pw.IntegerField()
-    redirectEnd = pw.IntegerField()
-    redirectStart = pw.IntegerField()
-    requestStart = pw.IntegerField()
-    responseEnd = pw.IntegerField()
-    responseStart = pw.IntegerField()
-    secureConnectionStart = pw.IntegerField()
-    unloadEventEnd = pw.IntegerField()
-    unloadEventStart = pw.IntegerField()
-    class Meta:
-        database = myDB
+class Transaction(BaseModel):
+    testCase = ForeignKeyField(TestCase, related_name='transaction')
+    name = CharField()
+    timeStamp = DateTimeField('%Y-%m-%d %H:%M:%S.%f')
+    iteration = IntegerField()
 
-class ResourceTiming(MySQLModel):
-    frame = pw.ForeignKeyField(Frame, related_name='resources')
-    connectEnd = pw.FloatField()
-    connectStart = pw.FloatField()
-    domainLookupEnd = pw.FloatField()
-    domainLookupStart = pw.FloatField()
-    duration = pw.FloatField()
-    entryType = pw.CharField()
-    fetchStart = pw.FloatField()
-    initiatorType = pw.CharField()
-    name = pw.CharField()
-    redirectEnd = pw.FloatField()
-    redirectStart = pw.FloatField()
-    requestStart = pw.FloatField()
-    responseEnd = pw.FloatField()
-    responseStart = pw.FloatField()
-    secureConnectionStart = pw.FloatField()
-    startTime = pw.FloatField()
-    workerStart = pw.FloatField()
-    class Meta:
-        database = myDB
+class Frame(BaseModel):
+    transaction = ForeignKeyField(Transaction, related_name='frame')
+    url = TextField()
 
+class Timing(BaseModel):
+    frame = ForeignKeyField(Frame, related_name='timing')
+    connectEnd = IntegerField()
+    connectStart = IntegerField()
+    domComplete = IntegerField()
+    domContentLoadedEventEnd = IntegerField()
+    domContentLoadedEventStart = IntegerField()
+    domInteractive = IntegerField()
+    domLoading = IntegerField()
+    domainLookupEnd = IntegerField()
+    domainLookupStart = IntegerField()
+    fetchStart = IntegerField()
+    loadEventEnd = IntegerField()
+    loadEventStart = IntegerField()
+    navigationStart = IntegerField()
+    redirectEnd = IntegerField()
+    redirectStart = IntegerField()
+    requestStart = IntegerField()
+    responseEnd = IntegerField()
+    responseStart = IntegerField()
+    secureConnectionStart = IntegerField()
+    unloadEventEnd = IntegerField()
+    unloadEventStart = IntegerField()
 
-myDB.connect()
+class ResourceTiming(BaseModel):
+    frame = ForeignKeyField(Frame,default=None, null=True, related_name='resource')
+    connectEnd = FloatField()
+    connectStart = FloatField()
+    domainLookupEnd = FloatField()
+    domainLookupStart = FloatField()
+    duration = FloatField()
+    entryType = CharField()
+    fetchStart = FloatField()
+    initiatorType = CharField()
+    name = TextField(default="default")
+    redirectEnd = FloatField()
+    redirectStart = FloatField()
+    requestStart = FloatField()
+    responseEnd = FloatField()
+    responseStart = FloatField()
+    secureConnectionStart = FloatField()
+    startTime = FloatField()
+    workerStart = FloatField()
 
-#Frame.create(username = "Stefan")
-myDB.create_tables([Frame, Timing, ResourceTiming])
-#myDB.create_table(Frame)
-myDB.close()
+def insertTestCase(timeStamp, comment):
+    return TestCase.create(timeStamp=timeStamp, comment=comment)
+
+def insertTransaction(testCaseID, timeStamp, name, iteration):
+    return Transaction.create(testCase = testCaseID, timeStamp = timeStamp, name=name, iteration=iteration)
+
+def insertFrame(transactionID, url):
+    return Frame.create(transaction = transactionID, url = url)
+
+def insertRecourceTimings(frameID, recourseTimings):
+    for item in recourseTimings:
+        item.update( {"frame":frameID})
+    with DB.atomic():
+        return ResourceTiming.insert_many(recourseTimings).execute()
+
+def init():
+    DB.connect()
+
+def destroy():
+    DB.close()
+
+#DB.create_tables([Frame, ResourceTiming, TestCase, Transaction])
+
