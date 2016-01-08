@@ -8,7 +8,6 @@ driver = None
 iteration = 0
 transactionTimeStamp = ''
 mainNavigationStart = 0
-#startTimes = {}
 testCase = None
 transaction = None
 
@@ -41,17 +40,16 @@ def getAjaxResources():
 
 
 def report(transactionName):
-    global transactionTimeStamp
     global iteration
     global transaction
     iteration += 1
     transaction = DB.insertTransaction(testCase.id, timeStamp(), transactionName, iteration)
-    #transactionTimeStamp = datetime.now() #.strftime('%Y-%m-%d_%H-%M-%S')
     waitForResourcesLoaded()
     driver.switch_to.default_content()
     saveTimings()
     reportTimingsRecursive("Main")
     driver.execute_script("window.performance.clearResourceTimings()")
+    DB.addRelMain(transaction)
 
 
 def  reportTimingsRecursive(parent):
@@ -74,14 +72,26 @@ def  reportTimingsRecursive(parent):
 
 
 def saveTimings():
-    global driver
-    '''Extracts data from browser and decides what is relevant to save'''
     frame = DB.insertFrame(transaction.id, driver.current_url)
     entries = getRecources()
     timing = getTiming()
+    timing = addRelativeTimes(timing)
     DB.insertRecources(frame.id, entries)
     DB.insertTiming(frame.id, timing)
 
+
+def addRelativeTimes(timing):
+    timing['redirect_time'] = timing['fetchStart']-timing['navigationStart']
+    timing['appCache_time'] = timing['domainLookupStart'] - timing['fetchStart']
+    timing['DNS_time'] = timing['domainLookupEnd'] - timing['domainLookupStart']
+    timing['DNSTCP_time'] = timing['connectStart'] - timing['domainLookupEnd']
+    timing['TCP_time'] = timing['connectEnd'] - timing['connectStart']
+    timing['blocked_time'] = timing['requestStart'] - timing['connectEnd']
+    timing['request_time'] = timing['responseStart'] - timing['requestStart']
+    timing['dom_time'] = timing['domComplete'] - timing['responseStart']
+    timing['onLoad_time'] = timing['loadEventEnd'] - timing['domComplete']
+    timing['total_time'] = timing['loadEventEnd'] - timing['navigationStart']
+    return timing
 
 def timeStamp():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')

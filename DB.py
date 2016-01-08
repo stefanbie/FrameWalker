@@ -47,6 +47,17 @@ class Timing(BaseModel):
     secureConnectionStart = DoubleField()
     unloadEventEnd = DoubleField()
     unloadEventStart = DoubleField()
+    redirect_time = IntegerField()
+    appCache_time = IntegerField()
+    DNS_time = IntegerField()
+    DNSTCP_time = IntegerField()
+    TCP_time = IntegerField()
+    blocked_time = IntegerField()
+    request_time = IntegerField()
+    dom_time = IntegerField()
+    onLoad_time = IntegerField()
+    total_time = IntegerField()
+    relativeMain = IntegerField()
 
 class Resource(BaseModel):
     frame = ForeignKeyField(Frame, default=None, null=True, related_name='resource')
@@ -84,7 +95,7 @@ def insertTiming(frameID, timing):
 def insertRecources(frameID, recourse):
     if len(recourse) > 0:
         for item in recourse:
-            item.update( {"frame":frameID})
+            item.update({"frame":frameID})
         with DB.atomic():
             return Resource.insert_many(recourse).execute()
     return None
@@ -100,4 +111,9 @@ def destroy():
 def addTables():
     DB.create_tables([TestCase, Transaction, Frame, Resource, Timing])
 
-
+def addRelMain(transaction):
+    timings = Timing.select().order_by(+Timing.navigationStart).join(Frame).where(Frame.transaction == transaction.get_id())
+    minStart = int(timings[0].navigationStart)
+    for timing in timings:
+        timing.relativeMain = int(timing.navigationStart) - minStart
+        timing.save()
