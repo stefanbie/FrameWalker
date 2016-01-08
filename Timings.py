@@ -79,7 +79,6 @@ def saveTimings():
     DB.insertRecources(frame.id, entries)
     DB.insertTiming(frame.id, timing)
 
-
 def addRelativeTimes(timing):
     timing['redirect_time'] = timing['fetchStart']-timing['navigationStart']
     timing['appCache_time'] = timing['domainLookupStart'] - timing['fetchStart']
