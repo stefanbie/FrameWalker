@@ -30,15 +30,6 @@ def waitForResourcesLoaded():
             break
 
 
-def getAjaxResources():
-    xmlResources = []
-    resources = json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntries())"))
-    for resource in resources:
-        if resource.get("initiatorType") == "xmlhttprequest":
-            xmlResources.append(resource)
-    return xmlResources
-
-
 def report(transactionName):
     global iteration
     global transaction
@@ -46,13 +37,13 @@ def report(transactionName):
     transaction = DB.insertTransaction(testCase.id, timeStamp(), transactionName, iteration)
     waitForResourcesLoaded()
     driver.switch_to.default_content()
-    saveTimings()
-    reportTimingsRecursive("Main")
+    frame = saveFrame({}, 0)
+    reportTimingsRecursive(frame)
     driver.execute_script("window.performance.clearResourceTimings()")
     DB.addRelMain(transaction)
 
 
-def  reportTimingsRecursive(parent):
+def  reportTimingsRecursive(parentFrame):
     '''Itterates all iFrames on the page and report the timings'''
     try:
         iFrames = driver.find_elements_by_tag_name('iframe')
@@ -60,24 +51,38 @@ def  reportTimingsRecursive(parent):
         return
     for iFrame in iFrames:
         try:
+            attributes = getAttributes(iFrame)
             driver.switch_to.frame(iFrame)
         except Exception:
             driver.execute_script("window.performance.clearResourceTimings()")
             return
-        saveTimings()
+        if not attributes.get('src') is None and attributes.get('src').startswith('http'):
+            frame = saveFrame(attributes, parentFrame.id)
+        else:
+            frame = parentFrame
         driver.execute_script("window.performance.clearResourceTimings()")
         currentWindow = driver.current_window_handle
-        reportTimingsRecursive(iFrame.id)
+        reportTimingsRecursive(frame)
         driver.switch_to.window(currentWindow)
 
 
-def saveTimings():
-    frame = DB.insertFrame(transaction.id, driver.current_url)
-    entries = getRecources()
+def saveFrame(attributes, parentID):
+    frame = DB.insertFrame(transaction.id, parentID, json.dumps(attributes))
+    saveTiming(frame)
+    saveResources(frame)
+    return frame
+
+
+def saveTiming(frame):
     timing = getTiming()
     timing = addRelativeTimes(timing)
-    DB.insertRecources(frame.id, entries)
     DB.insertTiming(frame.id, timing)
+
+
+def saveResources(frame):
+    entries = getRecources()
+    DB.insertRecources(frame.id, entries)
+
 
 def addRelativeTimes(timing):
     timing['redirect_time'] = timing['fetchStart']-timing['navigationStart']
@@ -92,11 +97,18 @@ def addRelativeTimes(timing):
     timing['total_time'] = timing['loadEventEnd'] - timing['navigationStart']
     return timing
 
+
 def timeStamp():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
+
 
 def getRecources():
     return json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))
 
+
 def getTiming():
     return json.loads(driver.execute_script("return JSON.stringify(window.performance.timing)"))
+
+
+def getAttributes(element):
+    return driver.execute_script("var items = {}; for (index = 0; index < arguments[0].attributes.length; ++index) { items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value }; return items;", element)

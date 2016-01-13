@@ -22,7 +22,8 @@ class Transaction(BaseModel):
 
 class Frame(BaseModel):
     transaction = ForeignKeyField(Transaction, related_name='frame')
-    url = TextField()
+    parentID = IntegerField()
+    attributes = TextField()
 
 class Timing(BaseModel):
     frame = ForeignKeyField(Frame, default=None, null=True, related_name='timing')
@@ -61,32 +62,19 @@ class Timing(BaseModel):
 
 class Resource(BaseModel):
     frame = ForeignKeyField(Frame, default=None, null=True, related_name='resource')
-    connectEnd = IntegerField()
-    connectStart = IntegerField()
-    domainLookupEnd = IntegerField()
-    domainLookupStart = IntegerField()
     duration = IntegerField()
     entryType = CharField()
-    fetchStart = IntegerField()
-    initiatorType = CharField()
     name = TextField()
-    redirectEnd = IntegerField()
-    redirectStart = IntegerField()
-    requestStart = IntegerField()
-    responseEnd = IntegerField()
-    responseStart = IntegerField()
-    secureConnectionStart = IntegerField()
     startTime = IntegerField()
-    workerStart = IntegerField()
 
 def insertTestCase(timeStamp, comment):
     return TestCase.create(timeStamp=timeStamp, comment=comment)
 
 def insertTransaction(testCaseID, timeStamp, name, iteration):
-    return Transaction.create(testCase = testCaseID, timeStamp = timeStamp, name=name, iteration=iteration)
+    return Transaction.create(testCase=testCaseID, timeStamp=timeStamp, name=name, iteration=iteration)
 
-def insertFrame(transactionID, url):
-    return Frame.create(transaction = transactionID, url = url)
+def insertFrame(transactionID, parentID, attributes):
+    return Frame.create(transaction=transactionID, parentID=parentID, attributes=attributes)
 
 def insertTiming(frameID, timing):
     timing["frame"] = frameID
@@ -113,7 +101,7 @@ def addTables():
 
 def addRelMain(transaction):
     timings = Timing.select().order_by(+Timing.navigationStart).join(Frame).where(Frame.transaction == transaction.get_id())
-    minStart = int(timings[0].navigationStart)
+    minStart = timings[0].navigationStart
     for timing in timings:
-        timing.relativeMain = int(timing.navigationStart) - minStart
+        timing.relativeMain = timing.navigationStart - minStart
         timing.save()
