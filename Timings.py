@@ -5,11 +5,13 @@ from selenium.common.exceptions import *
 import time
 
 driver = None
-iteration = 0
 transactionTimeStamp = ''
 mainNavigationStart = 0
 testCase = None
 transaction = None
+iteration = 0
+waitForLoadedTimeOut = 60
+waitForLoadedInsterval = 3
 
 def init(_driver, testCaseComment):
     global driver
@@ -19,11 +21,16 @@ def init(_driver, testCaseComment):
     testCase = DB.insertTestCase(timeStamp(), testCaseComment)
 
 
+def increaseIteration():
+    global iteration
+    iteration += 1
+
+
 def waitForResourcesLoaded():
     lastNbrOfResources = 0
-    while True:
-        time.sleep(3)
-        nbrOfResources = json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntries().length)"))
+    for x in range(1, int(waitForLoadedTimeOut/waitForLoadedInsterval)):
+        time.sleep(waitForLoadedInsterval)
+        nbrOfResources = getNbrOfResources()
         if nbrOfResources > lastNbrOfResources:
             lastNbrOfResources = nbrOfResources
         else:
@@ -31,15 +38,13 @@ def waitForResourcesLoaded():
 
 
 def report(transactionName):
-    global iteration
     global transaction
-    iteration += 1
     transaction = DB.insertTransaction(testCase.id, timeStamp(), transactionName, iteration)
     waitForResourcesLoaded()
     driver.switch_to.default_content()
-    frame = saveFrame({}, 0)
+    frame = saveFrame({'src': driver.current_url}, 0)
     reportTimingsRecursive(frame)
-    driver.execute_script("window.performance.clearResourceTimings()")
+    clearResourceTimings()
     DB.addRelMain(transaction)
 
 
@@ -54,20 +59,23 @@ def  reportTimingsRecursive(parentFrame):
             attributes = getAttributes(iFrame)
             driver.switch_to.frame(iFrame)
         except Exception:
-            driver.execute_script("window.performance.clearResourceTimings()")
+            clearResourceTimings()
             return
         if not attributes.get('src') is None and attributes.get('src').startswith('http'):
             frame = saveFrame(attributes, parentFrame.id)
         else:
             frame = parentFrame
-        driver.execute_script("window.performance.clearResourceTimings()")
+        clearResourceTimings()
         currentWindow = driver.current_window_handle
         reportTimingsRecursive(frame)
         driver.switch_to.window(currentWindow)
 
 
 def saveFrame(attributes, parentID):
-    frame = DB.insertFrame(transaction.id, parentID, json.dumps(attributes))
+    src = attributes.get('src')
+    if len(src) > 50:
+        src = src[:23] + '....' + src[-23:]
+    frame = DB.insertFrame(transaction.id, parentID, src, json.dumps(attributes))
     saveTiming(frame)
     saveResources(frame)
     return frame
@@ -81,6 +89,8 @@ def saveTiming(frame):
 
 def saveResources(frame):
     entries = getRecources()
+    for d in entries:
+        del d['entryType']
     DB.insertRecources(frame.id, entries)
 
 
@@ -102,8 +112,16 @@ def timeStamp():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
 
 
+def getNbrOfResources():
+    return json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntries().length)"))
+
+
 def getRecources():
     return json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))
+
+
+def clearResourceTimings():
+    driver.execute_script("window.performance.clearResourceTimings()")
 
 
 def getTiming():
@@ -112,3 +130,13 @@ def getTiming():
 
 def getAttributes(element):
     return driver.execute_script("var items = {}; for (index = 0; index < arguments[0].attributes.length; ++index) { items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value }; return items;", element)
+
+
+def setWaitForLoadedTimeOut(wait):
+    global waitForLoadedTimeOut
+    waitForLoadedTimeOut = wait
+
+
+def setWaitForLoadedInsterval(interval):
+    global waitForLoadedInsterval
+    waitForLoadedInsterval = interval
