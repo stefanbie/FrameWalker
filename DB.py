@@ -13,11 +13,13 @@ class BaseModel(Model):
 
 
 class TestCase(BaseModel):
+    testCase_id = PrimaryKeyField()
     timeStamp = DateTimeField(timeStampFormat)
     comment = TextField()
 
 
 class Transaction(BaseModel):
+    transaction_id = PrimaryKeyField()
     testCase = ForeignKeyField(TestCase, related_name='transaction')
     name = CharField()
     timeStamp = DateTimeField(timeStampFormat)
@@ -25,13 +27,16 @@ class Transaction(BaseModel):
 
 
 class Frame(BaseModel):
+    frame_id = PrimaryKeyField()
     transaction = ForeignKeyField(Transaction, related_name='frame')
     parentID = IntegerField()
+    frid = CharField()
     src = TextField()
     attributes = TextField()
 
 
 class Timing(BaseModel):
+    timing_id = PrimaryKeyField()
     frame = ForeignKeyField(Frame, default=None, null=True, related_name='timing')
     navigationStart = DoubleField();            redirectStart = DoubleField();          redirectEnd = DoubleField()
     fetchStart = DoubleField();                 domainLookupStart = DoubleField();      domainLookupEnd = DoubleField()
@@ -47,6 +52,7 @@ class Timing(BaseModel):
 
 
 class Resource(BaseModel):
+    resource_id = PrimaryKeyField()
     frame = ForeignKeyField(Frame, default=None, null=True, related_name='resource')
     name = TextField()
     startTime = IntegerField()
@@ -61,8 +67,8 @@ def insertTransaction(testCaseID, timeStamp, name, iteration):
     return Transaction.create(testCase=testCaseID, timeStamp=timeStamp, name=name, iteration=iteration)
 
 
-def insertFrame(transactionID, parentID, src, attributes):
-    return Frame.create(transaction=transactionID, parentID=parentID, src=src, attributes=attributes)
+def insertFrame(transactionID, parentID, frid, src, attributes):
+    return Frame.create(transaction=transactionID, parentID=parentID, frid=frid, src=src, attributes=attributes)
 
 
 def insertTiming(frameID, timing):

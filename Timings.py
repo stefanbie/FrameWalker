@@ -39,22 +39,23 @@ def waitForResourcesLoaded():
 
 def report(transactionName):
     global transaction
-    transaction = DB.insertTransaction(testCase.id, timeStamp(), transactionName, iteration)
+    transaction = DB.insertTransaction(testCase.testCase_id, timeStamp(), transactionName, iteration)
     waitForResourcesLoaded()
     driver.switch_to.default_content()
-    frame = saveFrame({'src': driver.current_url}, 0)
-    reportTimingsRecursive(frame)
+    frame = saveFrame({'src': driver.current_url}, 0, "0")
+    reportTimingsRecursive(frame, "0",)
     clearResourceTimings()
     DB.addRelMain(transaction)
 
 
-def  reportTimingsRecursive(parentFrame):
+def  reportTimingsRecursive(parentFrame, frid):
     '''Itterates all iFrames on the page and report the timings'''
     try:
         iFrames = driver.find_elements_by_tag_name('iframe')
     except NoSuchElementException:
         return
-    for iFrame in iFrames:
+    for nbr, iFrame in enumerate(iFrames):
+        recFrid = frid + "," + str(nbr)
         try:
             attributes = getAttributes(iFrame)
             driver.switch_to.frame(iFrame)
@@ -62,20 +63,21 @@ def  reportTimingsRecursive(parentFrame):
             clearResourceTimings()
             return
         if not attributes.get('src') is None and attributes.get('src').startswith('http'):
-            frame = saveFrame(attributes, parentFrame.id)
+            frame = saveFrame(attributes, parentFrame.frame_id, recFrid)
         else:
             frame = parentFrame
         clearResourceTimings()
         currentWindow = driver.current_window_handle
-        reportTimingsRecursive(frame)
+        reportTimingsRecursive(frame, recFrid)
         driver.switch_to.window(currentWindow)
 
 
-def saveFrame(attributes, parentID):
+def saveFrame(attributes, parentID, frid):
     src = attributes.get('src')
+    src = src.split('/')[2]
     if len(src) > 50:
         src = src[:23] + '....' + src[-23:]
-    frame = DB.insertFrame(transaction.id, parentID, src, json.dumps(attributes))
+    frame = DB.insertFrame(transaction.transaction_id, parentID, '{' + frid + '}', src, json.dumps(attributes))
     saveTiming(frame)
     saveResources(frame)
     return frame
@@ -84,14 +86,14 @@ def saveFrame(attributes, parentID):
 def saveTiming(frame):
     timing = getTiming()
     timing = addRelativeTimes(timing)
-    DB.insertTiming(frame.id, timing)
+    DB.insertTiming(frame.frame_id, timing)
 
 
 def saveResources(frame):
     entries = getRecources()
     for d in entries:
         del d['entryType']
-    DB.insertRecources(frame.id, entries)
+    DB.insertRecources(frame.frame_id, entries)
 
 
 def addRelativeTimes(timing):
