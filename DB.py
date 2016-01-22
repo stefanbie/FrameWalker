@@ -13,25 +13,26 @@ class BaseModel(Model):
 
 
 class TestCase(BaseModel):
-    testCase_id = PrimaryKeyField()
-    timeStamp = DateTimeField(timeStampFormat)
+    test_case_id = PrimaryKeyField()
+    test_case_timestamp = DateTimeField(timeStampFormat)
     comment = TextField()
 
 
 class Transaction(BaseModel):
     transaction_id = PrimaryKeyField()
-    testCase = ForeignKeyField(TestCase, related_name='transaction')
-    name = CharField()
-    timeStamp = DateTimeField(timeStampFormat)
+    test_case = ForeignKeyField(TestCase, related_name='transaction')
+    transaction_name = CharField()
+    timestamp = DateTimeField(timeStampFormat)
     iteration = IntegerField()
 
 
 class Frame(BaseModel):
     frame_id = PrimaryKeyField()
     transaction = ForeignKeyField(Transaction, related_name='frame')
-    parentID = IntegerField()
+    parent_id = IntegerField()
     frid = CharField()
     src = TextField()
+    hashed_src = CharField()
     attributes = TextField()
 
 
@@ -45,10 +46,10 @@ class Timing(BaseModel):
     domLoading = DoubleField();                 domInteractive = DoubleField();         domContentLoadedEventStart = DoubleField()
     domContentLoadedEventEnd = DoubleField();   domComplete = DoubleField();            loadEventStart = DoubleField()
     loadEventEnd = DoubleField();               unloadEventEnd = DoubleField();         unloadEventStart = DoubleField()
-    redirect_time = IntegerField();             appCache_time = IntegerField();         DNS_time = IntegerField()
-    DNSTCP_time = IntegerField();               TCP_time = IntegerField();              blocked_time = IntegerField()
-    request_time = IntegerField();              dom_time = IntegerField();              onLoad_time = IntegerField()
-    total_time = IntegerField();                relativeMain = IntegerField(default=-1)
+    redirect_time = IntegerField();             appcache_time = IntegerField();         dns_time = IntegerField()
+    dnstcp_time = IntegerField();               tcp_time = IntegerField();              blocked_time = IntegerField()
+    request_time = IntegerField();              dom_time = IntegerField();              onload_time = IntegerField()
+    total_time = IntegerField();                relative_main_time = IntegerField(default=-1)
 
 
 class Resource(BaseModel):
@@ -60,15 +61,15 @@ class Resource(BaseModel):
 
 
 def insertTestCase(timeStamp, comment):
-    return TestCase.create(timeStamp=timeStamp, comment=comment)
+    return TestCase.create(test_case_timestamp=timeStamp, comment=comment)
 
 
-def insertTransaction(testCaseID, timeStamp, name, iteration):
-    return Transaction.create(testCase=testCaseID, timeStamp=timeStamp, name=name, iteration=iteration)
+def insertTransaction(testCaseID, timeStamp, transactionName, iteration):
+    return Transaction.create(test_case=testCaseID, timestamp=timeStamp, transaction_name=transactionName, iteration=iteration)
 
 
-def insertFrame(transactionID, parentID, frid, src, attributes):
-    return Frame.create(transaction=transactionID, parentID=parentID, frid=frid, src=src, attributes=attributes)
+def insertFrame(transactionID, parentID, frid, src, hashedSrc, attributes):
+    return Frame.create(transaction=transactionID, parent_id=parentID, frid=frid, src=src, hashed_src=hashedSrc, attributes=attributes)
 
 
 def insertTiming(frameID, timing):
@@ -103,5 +104,12 @@ def addRelMain(transaction):
     timings = Timing.select().order_by(+Timing.navigationStart).join(Frame).where(Frame.transaction == transaction.get_id())
     minStart = timings[0].navigationStart
     for timing in timings:
-        timing.relativeMain = timing.navigationStart - minStart
+        timing.relative_main_time = timing.navigationStart - minStart
         timing.save()
+
+def lastNavigationStart(transaction):
+    timings = Timing.select().order_by(+Timing.navigationStart).join(Frame).where(Frame.transaction == transaction.get_id()-1)
+    try:
+        return timings[0].navigationStart
+    except Exception:
+        return -1

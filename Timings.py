@@ -3,6 +3,7 @@ from datetime import datetime
 import json
 from selenium.common.exceptions import *
 import time
+import hashlib
 
 driver = None
 transactionTimeStamp = ''
@@ -39,9 +40,10 @@ def waitForResourcesLoaded():
 
 def report(transactionName):
     global transaction
-    transaction = DB.insertTransaction(testCase.testCase_id, timeStamp(), transactionName, iteration)
+    transaction = DB.insertTransaction(testCase.test_case_id, timeStamp(), transactionName, iteration)
     waitForResourcesLoaded()
     driver.switch_to.default_content()
+    #ajax = isAjax()
     frame = saveFrame({'src': driver.current_url}, 0, "0")
     reportTimingsRecursive(frame, "0",)
     clearResourceTimings()
@@ -74,10 +76,11 @@ def  reportTimingsRecursive(parentFrame, frid):
 
 def saveFrame(attributes, parentID, frid):
     src = attributes.get('src')
+    hashedSrc = hashlib.md5(src.encode('utf-8')).hexdigest()[:12]
     src = src.split('/')[2]
     if len(src) > 50:
         src = src[:23] + '....' + src[-23:]
-    frame = DB.insertFrame(transaction.transaction_id, parentID, '{' + frid + '}', src, json.dumps(attributes))
+    frame = DB.insertFrame(transaction.transaction_id, parentID, '{' + frid + '}', src, hashedSrc, json.dumps(attributes))
     saveTiming(frame)
     saveResources(frame)
     return frame
@@ -90,22 +93,22 @@ def saveTiming(frame):
 
 
 def saveResources(frame):
-    entries = getRecources()
-    for d in entries:
+    resources = getResources()
+    for d in resources:
         del d['entryType']
-    DB.insertRecources(frame.frame_id, entries)
+    DB.insertRecources(frame.frame_id, resources)
 
 
 def addRelativeTimes(timing):
     timing['redirect_time'] = timing['fetchStart']-timing['navigationStart']
-    timing['appCache_time'] = timing['domainLookupStart'] - timing['fetchStart']
-    timing['DNS_time'] = timing['domainLookupEnd'] - timing['domainLookupStart']
-    timing['DNSTCP_time'] = timing['connectStart'] - timing['domainLookupEnd']
-    timing['TCP_time'] = timing['connectEnd'] - timing['connectStart']
+    timing['appcache_time'] = timing['domainLookupStart'] - timing['fetchStart']
+    timing['dns_time'] = timing['domainLookupEnd'] - timing['domainLookupStart']
+    timing['dnstcp_time'] = timing['connectStart'] - timing['domainLookupEnd']
+    timing['tcp_time'] = timing['connectEnd'] - timing['connectStart']
     timing['blocked_time'] = timing['requestStart'] - timing['connectEnd']
     timing['request_time'] = timing['responseStart'] - timing['requestStart']
     timing['dom_time'] = timing['domComplete'] - timing['responseStart']
-    timing['onLoad_time'] = timing['loadEventEnd'] - timing['domComplete']
+    timing['onload_time'] = timing['loadEventEnd'] - timing['domComplete']
     timing['total_time'] = timing['loadEventEnd'] - timing['navigationStart']
     return timing
 
@@ -114,12 +117,12 @@ def timeStamp():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
 
 
-def getNbrOfResources():
-    return json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntries().length)"))
-
-
-def getRecources():
+def getResources():
     return json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))
+
+
+def getNbrOfResources():
+    return driver.execute_script("return window.performance.getEntriesByType('resource').length")
 
 
 def clearResourceTimings():
@@ -132,6 +135,10 @@ def getTiming():
 
 def getAttributes(element):
     return driver.execute_script("var items = {}; for (index = 0; index < arguments[0].attributes.length; ++index) { items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value }; return items;", element)
+
+
+def isAjax():
+    return getNbrOfResources() > 1 and getTiming().get('navigationStart') == DB.lastNavigationStart(transaction)
 
 
 def setWaitForLoadedTimeOut(wait):
