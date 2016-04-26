@@ -15,8 +15,9 @@ waitForLoadedTimeOut = 60
 waitForLoadedInsterval = 3
 
 def init(_driver, testCaseComment):
-    global driver
     global testCase
+    global driver
+    global testcase_timestamp
     driver = _driver
     DB.init()
     testCase = DB.insertTestCase(timeStamp(), testCaseComment)
@@ -43,14 +44,15 @@ def report(transactionName):
     transaction = DB.insertTransaction(testCase.test_case_id, timeStamp(), transactionName, iteration)
     waitForResourcesLoaded()
     driver.switch_to.default_content()
-    #ajax = isAjax()
-    frame = saveFrame({'src': driver.current_url}, 0, "0")
-    reportTimingsRecursive(frame, "0",)
+    saveFrame({'src': driver.current_url}, '0')
+    saveIFrams('0')
     clearResourceTimings()
-    DB.addRelMain(transaction)
+    DB.addTransactionTimes(transaction)
+    DB.addFrameTimes(transaction)
+    DB.addTimingTimes(transaction)
+    DB.addResourceTimes(transaction)
 
-
-def  reportTimingsRecursive(parentFrame, frid):
+def  saveIFrams(frid):
     '''Itterates all iFrames on the page and report the timings'''
     try:
         iFrames = driver.find_elements_by_tag_name('iframe')
@@ -64,42 +66,46 @@ def  reportTimingsRecursive(parentFrame, frid):
         except Exception:
             clearResourceTimings()
             return
-        if not attributes.get('src') is None and attributes.get('src').startswith('http'):
-            frame = saveFrame(attributes, parentFrame.frame_id, recFrid)
-        else:
-            frame = parentFrame
+        saveFrame(attributes, recFrid)
         clearResourceTimings()
         currentWindow = driver.current_window_handle
-        reportTimingsRecursive(frame, recFrid)
+        saveIFrams(recFrid)
         driver.switch_to.window(currentWindow)
 
 
-def saveFrame(attributes, parentID, frid):
+def saveFrame(attributes, frid):
     src = attributes.get('src')
-    hashedSrc = hashlib.md5(src.encode('utf-8')).hexdigest()[:12]
+    if not src is None and src.startswith('http'):
+        frame = DB.insertFrame(transaction.transaction_id, '{' + frid + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
+        timing = getTiming()
+        resources = getResources(timing)
+        saveTiming(frame)
+        saveResources(resources, frame)
+
+
+def hashedSRC(src):
+    return hashlib.md5(src.encode('utf-8')).hexdigest()[:12]
+
+
+def truncatedSRC(src):
     src = src.split('/')[2]
     if len(src) > 50:
         src = src[:23] + '....' + src[-23:]
-    frame = DB.insertFrame(transaction.transaction_id, parentID, '{' + frid + '}', src, hashedSrc, json.dumps(attributes))
-    saveTiming(frame)
-    saveResources(frame)
-    return frame
+    return src
 
 
 def saveTiming(frame):
     timing = getTiming()
-    timing = addRelativeTimes(timing)
+    timing = addRelativeTimingValues(timing)
     DB.insertTiming(frame.frame_id, timing)
+    return timing
 
 
-def saveResources(frame):
-    resources = getResources()
-    for d in resources:
-        del d['entryType']
+def saveResources(resources, frame):
     DB.insertRecources(frame.frame_id, resources)
 
 
-def addRelativeTimes(timing):
+def addRelativeTimingValues(timing):
     timing['redirect_time'] = timing['fetchStart']-timing['navigationStart']
     timing['appcache_time'] = timing['domainLookupStart'] - timing['fetchStart']
     timing['dns_time'] = timing['domainLookupEnd'] - timing['domainLookupStart']
@@ -109,7 +115,7 @@ def addRelativeTimes(timing):
     timing['request_time'] = timing['responseStart'] - timing['requestStart']
     timing['dom_time'] = timing['domComplete'] - timing['responseStart']
     timing['onload_time'] = timing['loadEventEnd'] - timing['domComplete']
-    timing['total_time'] = timing['loadEventEnd'] - timing['navigationStart']
+    timing['timing_time'] = timing['loadEventEnd'] - timing['navigationStart']
     return timing
 
 
@@ -117,9 +123,15 @@ def timeStamp():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
 
 
-def getResources():
-    return json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))
+def getResources(timing):
+    resources = json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))
 
+    for d in resources:
+        d['absolute_start_time'] = int(timing['navigationStart']) + int(d['startTime'])
+        d['absolute_end_time'] = d['absolute_start_time'] + int(d['duration'])
+        d['resource_time'] = d.pop('duration')
+        del d['entryType']
+    return resources
 
 def getNbrOfResources():
     return driver.execute_script("return window.performance.getEntriesByType('resource').length")
@@ -135,10 +147,6 @@ def getTiming():
 
 def getAttributes(element):
     return driver.execute_script("var items = {}; for (index = 0; index < arguments[0].attributes.length; ++index) { items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value }; return items;", element)
-
-
-def isAjax():
-    return getNbrOfResources() > 1 and getTiming().get('navigationStart') == DB.lastNavigationStart(transaction)
 
 
 def setWaitForLoadedTimeOut(wait):
