@@ -11,32 +11,26 @@ mainNavigationStart = 0
 testCase = None
 transaction = None
 iteration = 0
-waitForLoadedTimeOut = 60
-waitForLoadedInsterval = 3
+waitForLoadedTimeOut = 0
+waitForLoadedInsterval = 0
 
-def init(_driver, testCaseComment):
+
+def init(_driver, testCaseComment, _waitForLoadedTimeOut = 60, _waitForLoadedInsterval = 3):
     global testCase
     global driver
     global testcase_timestamp
+    global waitForLoadedTimeOut
+    global waitForLoadedInsterval
     driver = _driver
     DB.init()
     testCase = DB.insertTestCase(timeStamp(), testCaseComment)
+    waitForLoadedTimeOut = _waitForLoadedTimeOut
+    waitForLoadedInsterval = _waitForLoadedInsterval
 
 
 def increaseIteration():
     global iteration
     iteration += 1
-
-
-def waitForResourcesLoaded():
-    lastNbrOfResources = 0
-    for x in range(1, int(waitForLoadedTimeOut/waitForLoadedInsterval)):
-        time.sleep(waitForLoadedInsterval)
-        nbrOfResources = getNbrOfResources()
-        if nbrOfResources > lastNbrOfResources:
-            lastNbrOfResources = nbrOfResources
-        else:
-            break
 
 
 def report(transactionName):
@@ -52,8 +46,12 @@ def report(transactionName):
     DB.addTimingTimes(transaction)
     DB.addResourceTimes(transaction)
 
+
+def timeStamp():
+    return datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
+
+
 def  saveIFrams(frid):
-    '''Itterates all iFrames on the page and report the timings'''
     try:
         iFrames = driver.find_elements_by_tag_name('iframe')
     except NoSuchElementException:
@@ -83,15 +81,18 @@ def saveFrame(attributes, frid):
         saveResources(resources, frame)
 
 
-def hashedSRC(src):
-    return hashlib.md5(src.encode('utf-8')).hexdigest()[:12]
+def getTiming():
+    return json.loads(driver.execute_script("return JSON.stringify(window.performance.timing)"))
 
 
-def truncatedSRC(src):
-    src = src.split('/')[2]
-    if len(src) > 50:
-        src = src[:23] + '....' + src[-23:]
-    return src
+def getResources(timing):
+    resources = json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))
+    for d in resources:
+        d['absolute_start_time'] = int(timing['navigationStart']) + int(d['startTime'])
+        d['absolute_end_time'] = d['absolute_start_time'] + int(d['duration'])
+        d['resource_time'] = d.pop('duration')
+        del d['entryType']
+    return resources
 
 
 def saveTiming(frame):
@@ -119,20 +120,6 @@ def addRelativeTimingValues(timing):
     return timing
 
 
-def timeStamp():
-    return datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
-
-
-def getResources(timing):
-    resources = json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))
-
-    for d in resources:
-        d['absolute_start_time'] = int(timing['navigationStart']) + int(d['startTime'])
-        d['absolute_end_time'] = d['absolute_start_time'] + int(d['duration'])
-        d['resource_time'] = d.pop('duration')
-        del d['entryType']
-    return resources
-
 def getNbrOfResources():
     return driver.execute_script("return window.performance.getEntriesByType('resource').length")
 
@@ -141,19 +128,27 @@ def clearResourceTimings():
     driver.execute_script("window.performance.clearResourceTimings()")
 
 
-def getTiming():
-    return json.loads(driver.execute_script("return JSON.stringify(window.performance.timing)"))
-
-
 def getAttributes(element):
     return driver.execute_script("var items = {}; for (index = 0; index < arguments[0].attributes.length; ++index) { items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value }; return items;", element)
 
 
-def setWaitForLoadedTimeOut(wait):
-    global waitForLoadedTimeOut
-    waitForLoadedTimeOut = wait
+def hashedSRC(src):
+    return hashlib.md5(src.encode('utf-8')).hexdigest()[:12]
 
 
-def setWaitForLoadedInsterval(interval):
-    global waitForLoadedInsterval
-    waitForLoadedInsterval = interval
+def truncatedSRC(src):
+    src = src.split('/')[2]
+    if len(src) > 50:
+        src = src[:23] + '....' + src[-23:]
+    return src
+
+
+def waitForResourcesLoaded():
+    lastNbrOfResources = 0
+    for x in range(1, int(waitForLoadedTimeOut/waitForLoadedInsterval)):
+        time.sleep(waitForLoadedInsterval)
+        nbrOfResources = getNbrOfResources()
+        if nbrOfResources > lastNbrOfResources:
+            lastNbrOfResources = nbrOfResources
+        else:
+            break

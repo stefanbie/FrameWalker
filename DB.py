@@ -12,6 +12,76 @@ Cleanup:
     DROP TABLE `frameway`.`frame`;
     DROP TABLE `frameway`.`transaction`;
     DROP TABLE `frameway`.`testcase`
+
+
+view 'all':
+CREATE
+    ALGORITHM = UNDEFINED
+    DEFINER = `root`@`localhost`
+    SQL SECURITY DEFINER
+VIEW `all` AS
+    SELECT
+        `testcase`.`test_case_id` AS `test_case_id`,
+        `testcase`.`test_case_timestamp` AS `test_case_timestamp`,
+        `testcase`.`comment` AS `testcase_comment`,
+        `transaction`.`transaction_id` AS `transaction_id`,
+        `transaction`.`timestamp` AS `transaction_timestamp`,
+        `transaction`.`transaction_name` AS `transaction_name`,
+        `transaction`.`iteration` AS `transaction_iteration`,
+        `transaction`.`transaction_start_time` AS `transaction_start`,
+        `transaction`.`transaction_time` AS `transaction_time`,
+        `frame`.`frame_id` AS `frame_id`,
+        `frame`.`attributes` AS `frame_attributes`,
+        `frame`.`frid` AS `frame_frid`,
+        `frame`.`hashed_src` AS `frame_hashed_src`,
+        `frame`.`src` AS `frame_src`,
+        `frame`.`frame_relative_start_time` AS `frame_relative_start_time`,
+        `frame`.`frame_time` AS `frame_time`,
+        `frame`.`resources_relative_start_time` AS `resources_relative_start_time`,
+        `frame`.`resources_time` AS `resources_time`,
+        NULL AS `resource_id`,
+        NULL AS `resource_name`,
+        NULL AS `resource_time`,
+        NULL AS `resource_relative_start_time`,
+        `timing`.`timing_id` AS `timing_id`,
+        `timing`.`timing_time` AS `timing_time`,
+        `timing`.`timing_relative_start_time` AS `timing_relative_start_time`
+    FROM
+        (((`testcase`
+        JOIN `transaction` ON ((`testcase`.`test_case_id` = `transaction`.`test_case_id`)))
+        JOIN `frame` ON ((`transaction`.`transaction_id` = `frame`.`transaction_id`)))
+        JOIN `timing` ON ((`frame`.`frame_id` = `timing`.`frame_id`)))
+    UNION SELECT
+        `testcase`.`test_case_id` AS `test_case_id`,
+        `testcase`.`test_case_timestamp` AS `test_case_timestamp`,
+        `testcase`.`comment` AS `testcase_comment`,
+        `transaction`.`transaction_id` AS `transaction_id`,
+        `transaction`.`timestamp` AS `transaction_timestamp`,
+        `transaction`.`transaction_name` AS `transaction_name`,
+        `transaction`.`iteration` AS `transaction_iteration`,
+        `transaction`.`transaction_start_time` AS `transaction_start`,
+        `transaction`.`transaction_time` AS `transaction_time`,
+        `frame`.`frame_id` AS `frame_id`,
+        `frame`.`attributes` AS `frame_attributes`,
+        `frame`.`frid` AS `frame_frid`,
+        `frame`.`hashed_src` AS `frame_hashed_src`,
+        `frame`.`src` AS `frame_src`,
+        `frame`.`frame_relative_start_time` AS `frame_relative_start_time`,
+        `frame`.`frame_time` AS `frame_time`,
+        `frame`.`resources_relative_start_time` AS `resources_relative_start_time`,
+        `frame`.`resources_time` AS `resources_time`,
+        `resource`.`resource_id` AS `resource_id`,
+        `resource`.`name` AS `resource_name`,
+        `resource`.`resource_relative_start_time` AS `resource_relative_start_time`,
+        `resource`.`resource_time` AS `resource_time`,
+        NULL AS `timing_id`,
+        NULL AS `timing_time`,
+        NULL AS `timing_relative_start_time`
+    FROM
+        (((`testcase`
+        JOIN `transaction` ON ((`testcase`.`test_case_id` = `transaction`.`test_case_id`)))
+        JOIN `frame` ON ((`transaction`.`transaction_id` = `frame`.`transaction_id`)))
+        JOIN `resource` ON ((`frame`.`frame_id` = `resource`.`frame_id`)))
 '''
 
 DB = MySQLDatabase("frameway", host="127.0.0.1", port=3306, user="dbuser", passwd="dbuser")
@@ -108,7 +178,6 @@ def insertTransaction(testCaseID, timeStamp, transactionName, iteration):
     return Transaction.create(test_case=testCaseID, timestamp=timeStamp, transaction_name=transactionName,
                               iteration=iteration)
 
-
 def insertFrame(transactionID, frid, src, hashedSrc, attributes):
     return Frame.create(transaction=transactionID, frid=frid, src=src, hashed_src=hashedSrc, attributes=attributes)
 
@@ -155,7 +224,6 @@ def addFrameTimes(transaction):
         Frame.update(frame_time=endTime - startTime).where(Frame.frame_id == frame.frame_id).execute()
 
 
-
 def addTimingTimes(transaction):
     transactionStartTime = TransactionStartTime(transaction)
     query = 'update timing ' \
@@ -176,7 +244,6 @@ def addResourceTimes(transaction):
             'where frame.transaction_id = %d' \
             % (transactionStartTime, transaction.transaction_id)
     DB.execute_sql(query)
-
     frames = Frame.select().where(Frame.transaction == transaction.transaction_id).execute()
     for frame in frames:
         #Add resources_relative_start_time
@@ -195,21 +262,9 @@ def addResourceTimes(transaction):
         totalResourcesTime = absolute_end_time - absolute_start_time
         Frame.update(resources_time=totalResourcesTime).where(Frame.frame_id == frame.frame_id).execute()
 
+
 def TransactionStartTime(transaction):
     return Transaction.select(Transaction.transaction_start_time).where(Transaction.transaction_id == transaction.transaction_id).get().transaction_start_time
-
-
-def timingExist(navigationStart):
-    try:
-        Timing.select().where(Timing.navigationStart == navigationStart).get()
-    except Timing.DoesNotExist:
-        return False
-    return True
-
-
-def updateFrame(frame, totalResourceTime, relativeResourceTime):
-    Frame.update(resources_time=totalResourceTime).where(Frame.frame_id == frame.frame_id).execute()
-    Frame.update(resources_relative_start_time=relativeResourceTime).where(Frame.frame_id == frame.frame_id).execute()
 
 
 def init():
@@ -218,28 +273,9 @@ def init():
         addTables()
 
 
-def destroy():
-    DB.close()
-
-
 def addTables():
     DB.create_tables([TestCase, Transaction, Frame, Resource, Timing])
 
 
-def addRelTimings(transaction):
-    timings = Timing.select().order_by(+Timing.navigationStart).join(Frame).where(
-        Frame.transaction == transaction.get_id())
-    minStart = timings[0].navigationStart
-    for timing in timings:
-        timing.relative_main_time = timing.navigationStart - minStart
-        timing.save()
-
-
-
-def addRelResources(transaction):
-    resources = Resource.select().order_by(+Resource.startTime).join(Frame).where(
-        Frame.transaction == transaction.get_id())
-    minStart = resources[0].startTime
-    for resource in resources:
-        resource.relative_main_time = timing.navigationStart - minStart
-        timing.save()
+def destroy():
+    DB.close()
