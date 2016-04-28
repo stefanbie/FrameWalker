@@ -1,4 +1,3 @@
-from selenium.common.exceptions import StaleElementReferenceException
 from selenium.common.exceptions import NoSuchElementException
 driver = None
 elementFound = False

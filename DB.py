@@ -23,22 +23,22 @@ VIEW `all` AS
     SELECT
         `testcase`.`test_case_id` AS `test_case_id`,
         `testcase`.`test_case_timestamp` AS `test_case_timestamp`,
-        `testcase`.`comment` AS `testcase_comment`,
+        `testcase`.`test_case_comment` AS `test_case_comment`,
         `transaction`.`transaction_id` AS `transaction_id`,
-        `transaction`.`timestamp` AS `transaction_timestamp`,
+        `transaction`.`transaction_timestamp` AS `transaction_timestamp`,
         `transaction`.`transaction_name` AS `transaction_name`,
-        `transaction`.`iteration` AS `transaction_iteration`,
-        `transaction`.`transaction_start_time` AS `transaction_start`,
+        `transaction`.`transaction_iteration` AS `transaction_iteration`,
+        `transaction`.`transaction_start_time` AS `transaction_start_time`,
         `transaction`.`transaction_time` AS `transaction_time`,
         `frame`.`frame_id` AS `frame_id`,
-        `frame`.`attributes` AS `frame_attributes`,
-        `frame`.`frid` AS `frame_frid`,
-        `frame`.`hashed_src` AS `frame_hashed_src`,
-        `frame`.`src` AS `frame_src`,
+        `frame`.`frame_attributes` AS `frame_attributes`,
+        `frame`.`frame_structure_id` AS `frame_structure_id`,
+        `frame`.`frame_hashed_src` AS `frame_hashed_src`,
+        `frame`.`frame_src` AS `frame_src`,
         `frame`.`frame_relative_start_time` AS `frame_relative_start_time`,
         `frame`.`frame_time` AS `frame_time`,
-        `frame`.`resources_relative_start_time` AS `resources_relative_start_time`,
-        `frame`.`resources_time` AS `resources_time`,
+        `frame`.`frame_resources_relative_start_time` AS `frame_resources_relative_start_time`,
+        `frame`.`frame_resources_time` AS `frame_resources_time`,
         NULL AS `resource_id`,
         NULL AS `resource_name`,
         NULL AS `resource_time`,
@@ -54,26 +54,26 @@ VIEW `all` AS
     UNION SELECT
         `testcase`.`test_case_id` AS `test_case_id`,
         `testcase`.`test_case_timestamp` AS `test_case_timestamp`,
-        `testcase`.`comment` AS `testcase_comment`,
+        `testcase`.`test_case_comment` AS `test_case_comment`,
         `transaction`.`transaction_id` AS `transaction_id`,
-        `transaction`.`timestamp` AS `transaction_timestamp`,
+        `transaction`.`transaction_timestamp` AS `transaction_timestamp`,
         `transaction`.`transaction_name` AS `transaction_name`,
-        `transaction`.`iteration` AS `transaction_iteration`,
-        `transaction`.`transaction_start_time` AS `transaction_start`,
+        `transaction`.`transaction_iteration` AS `transaction_iteration`,
+        `transaction`.`transaction_start_time` AS `transaction_start_time`,
         `transaction`.`transaction_time` AS `transaction_time`,
         `frame`.`frame_id` AS `frame_id`,
-        `frame`.`attributes` AS `frame_attributes`,
-        `frame`.`frid` AS `frame_frid`,
-        `frame`.`hashed_src` AS `frame_hashed_src`,
-        `frame`.`src` AS `frame_src`,
+        `frame`.`frame_attributes` AS `frame_attributes`,
+        `frame`.`frame_structure_id` AS `structure_id`,
+        `frame`.`frame_hashed_src` AS `frame_hashed_src`,
+        `frame`.`frame_src` AS `frame_src`,
         `frame`.`frame_relative_start_time` AS `frame_relative_start_time`,
         `frame`.`frame_time` AS `frame_time`,
-        `frame`.`resources_relative_start_time` AS `resources_relative_start_time`,
-        `frame`.`resources_time` AS `resources_time`,
+        `frame`.`frame_resources_relative_start_time` AS `frame_resources_relative_start_time`,
+        `frame`.`frame_resources_time` AS `frame_resources_time`,
         `resource`.`resource_id` AS `resource_id`,
-        `resource`.`name` AS `resource_name`,
-        `resource`.`resource_relative_start_time` AS `resource_relative_start_time`,
+        `resource`.`resource_name` AS `resource_name`,
         `resource`.`resource_time` AS `resource_time`,
+        `resource`.`resource_relative_start_time` AS `resource_relative_start_time`,
         NULL AS `timing_id`,
         NULL AS `timing_time`,
         NULL AS `timing_relative_start_time`
@@ -96,15 +96,15 @@ class BaseModel(Model):
 class TestCase(BaseModel):
     test_case_id = PrimaryKeyField()
     test_case_timestamp = DateTimeField(timeStampFormat)
-    comment = TextField()
+    test_case_comment = TextField()
 
 
 class Transaction(BaseModel):
     transaction_id = PrimaryKeyField()
     test_case = ForeignKeyField(TestCase, related_name='transaction')
     transaction_name = CharField()
-    timestamp = DateTimeField(timeStampFormat)
-    iteration = IntegerField()
+    transaction_timestamp = DateTimeField(timeStampFormat)
+    transaction_iteration = IntegerField()
     transaction_start_time = DoubleField(default=-1)
     transaction_time = IntegerField(default=-1)
 
@@ -112,19 +112,20 @@ class Transaction(BaseModel):
 class Frame(BaseModel):
     frame_id = PrimaryKeyField()
     transaction = ForeignKeyField(Transaction, related_name='frame')
-    frid = CharField()
-    src = TextField()
-    hashed_src = CharField()
-    attributes = TextField()
+    frame_structure_id = CharField()
+    frame_src = TextField()
+    frame_hashed_src = CharField()
+    frame_attributes = TextField()
     frame_relative_start_time = IntegerField(default=-1)
     frame_time = IntegerField(default=-1)
-    resources_relative_start_time = IntegerField(default=-1)
-    resources_time = IntegerField(default=-1)
+    frame_resources_relative_start_time = IntegerField(default=-1)
+    frame_resources_time = IntegerField(default=-1)
 
 
 class Timing(BaseModel):
     timing_id = PrimaryKeyField()
     frame = ForeignKeyField(Frame, default=None, null=True, related_name='timing')
+    timing_src = TextField()
     navigationStart = DoubleField()
     redirectStart = DoubleField()
     redirectEnd = DoubleField()
@@ -146,15 +147,15 @@ class Timing(BaseModel):
     loadEventEnd = DoubleField()
     unloadEventEnd = DoubleField()
     unloadEventStart = DoubleField()
-    redirect_time = IntegerField()
-    appcache_time = IntegerField()
-    dns_time = IntegerField()
-    dnstcp_time = IntegerField()
-    tcp_time = IntegerField()
-    blocked_time = IntegerField()
-    request_time = IntegerField()
-    dom_time = IntegerField()
-    onload_time = IntegerField()
+    timing_redirect = IntegerField()
+    timing_appcache = IntegerField()
+    timing_dns = IntegerField()
+    timing_dnstcp = IntegerField()
+    timing_tcp = IntegerField()
+    timing_blocked = IntegerField()
+    timing_request = IntegerField()
+    timing_dom = IntegerField()
+    timing_onload = IntegerField()
     timing_relative_start_time = IntegerField(default=-1)
     timing_time = IntegerField(default=-1)
 
@@ -162,24 +163,24 @@ class Timing(BaseModel):
 class Resource(BaseModel):
     resource_id = PrimaryKeyField()
     frame = ForeignKeyField(Frame, default=None, null=True, related_name='resource')
-    name = TextField()
-    startTime = IntegerField()
-    absolute_start_time = DoubleField(default=-1)
-    absolute_end_time = DoubleField(default=-1)
+    resource_name = TextField()
+    resource_start_time = IntegerField()
+    resource_absolute_start_time = DoubleField(default=-1)
+    resource_absolute_end_time = DoubleField(default=-1)
     resource_relative_start_time = IntegerField(default=-1)
     resource_time = IntegerField(default=-1)
 
 
 def insertTestCase(timeStamp, comment):
-    return TestCase.create(test_case_timestamp=timeStamp, comment=comment)
+    return TestCase.create(test_case_timestamp=timeStamp, test_case_comment=comment)
 
 
 def insertTransaction(testCaseID, timeStamp, transactionName, iteration):
-    return Transaction.create(test_case=testCaseID, timestamp=timeStamp, transaction_name=transactionName,
-                              iteration=iteration)
+    return Transaction.create(test_case=testCaseID, transaction_timestamp=timeStamp, transaction_name=transactionName,
+                              transaction_iteration=iteration)
 
-def insertFrame(transactionID, frid, src, hashedSrc, attributes):
-    return Frame.create(transaction=transactionID, frid=frid, src=src, hashed_src=hashedSrc, attributes=attributes)
+def insertFrame(transactionID, frameStructureId, src, hashedSrc, attributes):
+    return Frame.create(transaction=transactionID, frame_structure_id=frameStructureId, frame_src=src, frame_hashed_src=hashedSrc, frame_attributes=attributes)
 
 
 def insertTiming(frameID, timing):
@@ -198,12 +199,12 @@ def insertRecources(frameID, recourse):
 
 def addTransactionTimes(transaction):
     timingStartTimes = Timing.select(Timing.navigationStart.alias('starttime')).join(Frame).where(Frame.transaction == transaction.transaction_id)
-    resourceStartTimes = Resource.select(Resource.absolute_start_time.alias('starttime')).join(Frame).where(Frame.transaction == transaction.transaction_id)
+    resourceStartTimes = Resource.select(Resource.resource_absolute_start_time.alias('starttime')).join(Frame).where(Frame.transaction == transaction.transaction_id)
     startTime = (timingStartTimes | resourceStartTimes).order_by(+SQL('starttime')).get().starttime
     Transaction.update(transaction_start_time = startTime).where(Transaction.transaction_id==transaction.transaction_id).execute()
 
     timingEndTimes = Timing.select(Timing.loadEventEnd.alias('endtime')).join(Frame).where(Frame.transaction == transaction.transaction_id)
-    resourceEndTimes = Resource.select(Resource.absolute_end_time.alias('endtime')).join(Frame).where(Frame.transaction == transaction.transaction_id)
+    resourceEndTimes = Resource.select(Resource.resource_absolute_end_time.alias('endtime')).join(Frame).where(Frame.transaction == transaction.transaction_id)
     endTime = (timingEndTimes | resourceEndTimes).order_by(-SQL('endtime')).get().endtime
     Transaction.update(transaction_time=endTime - startTime).where(Transaction.transaction_id==transaction.transaction_id).execute()
 
@@ -214,12 +215,12 @@ def addFrameTimes(transaction):
     for frame in frames:
         #Add frame_relative_start_time
         timingStartTimes = Timing.select(Timing.navigationStart.alias('starttime')).where(Timing.frame == frame.frame_id)
-        resourceStartTimes = Resource.select(Resource.absolute_start_time.alias('starttime')).where(Resource.frame == frame.frame_id)
+        resourceStartTimes = Resource.select(Resource.resource_absolute_start_time.alias('starttime')).where(Resource.frame == frame.frame_id)
         startTime = (timingStartTimes | resourceStartTimes).order_by(+SQL('starttime')).get().starttime
         Frame.update(frame_relative_start_time=startTime-transactionStartTime).where(Frame.frame_id == frame.frame_id).execute()
         #Add frame_time
         timingEndTimes = Timing.select(Timing.loadEventEnd.alias('endtime')).where(Timing.frame == frame.frame_id)
-        resourceEndTimes = Resource.select(Resource.absolute_end_time.alias('endtime')).where(Resource.frame == frame.frame_id)
+        resourceEndTimes = Resource.select(Resource.resource_absolute_end_time.alias('endtime')).where(Resource.frame == frame.frame_id)
         endTime = (timingEndTimes | resourceEndTimes).order_by(-SQL('endtime')).get().endtime
         Frame.update(frame_time=endTime - startTime).where(Frame.frame_id == frame.frame_id).execute()
 
@@ -240,7 +241,7 @@ def addResourceTimes(transaction):
     query = 'update resource ' \
             'join frame ' \
             'on frame.frame_id = resource.frame_id ' \
-            'set resource_relative_start_time = resource.absolute_start_time - %d ' \
+            'set resource_relative_start_time = resource.resource_absolute_start_time - %d ' \
             'where frame.transaction_id = %d' \
             % (transactionStartTime, transaction.transaction_id)
     DB.execute_sql(query)
@@ -251,16 +252,16 @@ def addResourceTimes(transaction):
             resources_relative_start_time = Resource.select(Resource.resource_relative_start_time).where(Resource.frame == frame.frame_id).order_by(+Resource.resource_relative_start_time).get().resource_relative_start_time
         except DoesNotExist:
             resources_relative_start_time = -1
-        Frame.update(resources_relative_start_time=resources_relative_start_time).where(Frame.frame_id == frame.frame_id).execute()
+        Frame.update(frame_resources_relative_start_time=resources_relative_start_time).where(Frame.frame_id == frame.frame_id).execute()
         #Add resources_time
         try:
-            absolute_start_time = Resource.select(Resource.absolute_start_time).where(Resource.frame == frame.frame_id).order_by(+Resource.resource_relative_start_time).get().absolute_start_time
-            absolute_end_time = Resource.select(Resource.absolute_end_time).where(Resource.frame == frame.frame_id).order_by(-Resource.absolute_end_time).get().absolute_end_time
+            absolute_start_time = Resource.select(Resource.resource_absolute_start_time).where(Resource.frame == frame.frame_id).order_by(+Resource.resource_relative_start_time).get().resource_absolute_start_time
+            absolute_end_time = Resource.select(Resource.resource_absolute_end_time).where(Resource.frame == frame.frame_id).order_by(-Resource.resource_absolute_end_time).get().resource_absolute_end_time
         except DoesNotExist:
             absolute_end_time = -1
-            absolute_start_time = -1
+            absolute_start_time = 0
         totalResourcesTime = absolute_end_time - absolute_start_time
-        Frame.update(resources_time=totalResourcesTime).where(Frame.frame_id == frame.frame_id).execute()
+        Frame.update(frame_resources_time=totalResourcesTime).where(Frame.frame_id == frame.frame_id).execute()
 
 
 def TransactionStartTime(transaction):

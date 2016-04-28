@@ -13,19 +13,20 @@ transaction = None
 iteration = 0
 waitForLoadedTimeOut = 0
 waitForLoadedInsterval = 0
+verbosity = 0
 
 
-def init(_driver, testCaseComment, _waitForLoadedTimeOut = 60, _waitForLoadedInsterval = 3):
+def init(_driver, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoadedInsterval=3):
     global testCase
     global driver
-    global testcase_timestamp
     global waitForLoadedTimeOut
     global waitForLoadedInsterval
     driver = _driver
     DB.init()
-    testCase = DB.insertTestCase(timeStamp(), testCaseComment)
+    testCase = DB.insertTestCase(timeStamp(), _comment)
     waitForLoadedTimeOut = _waitForLoadedTimeOut
     waitForLoadedInsterval = _waitForLoadedInsterval
+    verbosity = _verbosity
 
 
 def increaseIteration():
@@ -44,41 +45,41 @@ def report(transactionName):
     DB.addTransactionTimes(transaction)
     DB.addFrameTimes(transaction)
     DB.addTimingTimes(transaction)
-    DB.addResourceTimes(transaction)
+    if verbosity == 3:
+        DB.addResourceTimes(transaction)
 
 
 def timeStamp():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
 
 
-def  saveIFrams(frid):
+def saveIFrams(frameStructureId):
     try:
         iFrames = driver.find_elements_by_tag_name('iframe')
     except NoSuchElementException:
         return
     for nbr, iFrame in enumerate(iFrames):
-        recFrid = frid + "," + str(nbr)
+        recFrameStructureId = frameStructureId + "," + str(nbr)
         try:
             attributes = getAttributes(iFrame)
             driver.switch_to.frame(iFrame)
         except Exception:
             clearResourceTimings()
             return
-        saveFrame(attributes, recFrid)
+        saveFrame(attributes, recFrameStructureId)
         clearResourceTimings()
         currentWindow = driver.current_window_handle
-        saveIFrams(recFrid)
+        saveIFrams(recFrameStructureId)
         driver.switch_to.window(currentWindow)
 
 
-def saveFrame(attributes, frid):
+def saveFrame(attributes, frameStructureId):
     src = attributes.get('src')
     if not src is None and src.startswith('http'):
-        frame = DB.insertFrame(transaction.transaction_id, '{' + frid + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
-        timing = getTiming()
-        resources = getResources(timing)
-        saveTiming(frame)
-        saveResources(resources, frame)
+        frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
+        timing = saveTiming(frame)
+        if verbosity == 3:
+            saveResources(timing, frame)
 
 
 def getTiming():
@@ -88,9 +89,11 @@ def getTiming():
 def getResources(timing):
     resources = json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))
     for d in resources:
-        d['absolute_start_time'] = int(timing['navigationStart']) + int(d['startTime'])
-        d['absolute_end_time'] = d['absolute_start_time'] + int(d['duration'])
+        d['resource_absolute_start_time'] = int(timing['navigationStart']) + int(d['startTime'])
+        d['resource_absolute_end_time'] = d['resource_absolute_start_time'] + int(d['duration'])
         d['resource_time'] = d.pop('duration')
+        d['resource_name'] = d.pop('name')
+        d['resource_start_time'] = d.pop('startTime')
         del d['entryType']
     return resources
 
@@ -102,20 +105,22 @@ def saveTiming(frame):
     return timing
 
 
-def saveResources(resources, frame):
+def saveResources(timing, frame):
+    resources = getResources(timing)
     DB.insertRecources(frame.frame_id, resources)
 
 
 def addRelativeTimingValues(timing):
-    timing['redirect_time'] = timing['fetchStart']-timing['navigationStart']
-    timing['appcache_time'] = timing['domainLookupStart'] - timing['fetchStart']
-    timing['dns_time'] = timing['domainLookupEnd'] - timing['domainLookupStart']
-    timing['dnstcp_time'] = timing['connectStart'] - timing['domainLookupEnd']
-    timing['tcp_time'] = timing['connectEnd'] - timing['connectStart']
-    timing['blocked_time'] = timing['requestStart'] - timing['connectEnd']
-    timing['request_time'] = timing['responseStart'] - timing['requestStart']
-    timing['dom_time'] = timing['domComplete'] - timing['responseStart']
-    timing['onload_time'] = timing['loadEventEnd'] - timing['domComplete']
+    timing['timing_src'] = driver.current_url
+    timing['timing_redirect'] = timing['fetchStart']-timing['navigationStart']
+    timing['timing_appcache'] = timing['domainLookupStart'] - timing['fetchStart']
+    timing['timing_dns'] = timing['domainLookupEnd'] - timing['domainLookupStart']
+    timing['timing_dnstcp'] = timing['connectStart'] - timing['domainLookupEnd']
+    timing['timing_tcp'] = timing['connectEnd'] - timing['connectStart']
+    timing['timing_blocked'] = timing['requestStart'] - timing['connectEnd']
+    timing['timing_request'] = timing['responseStart'] - timing['requestStart']
+    timing['timing_dom'] = timing['domComplete'] - timing['responseStart']
+    timing['timing_onload'] = timing['loadEventEnd'] - timing['domComplete']
     timing['timing_time'] = timing['loadEventEnd'] - timing['navigationStart']
     return timing
 
