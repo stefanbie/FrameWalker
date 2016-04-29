@@ -82,6 +82,16 @@ VIEW `all` AS
         JOIN `transaction` ON ((`testcase`.`test_case_id` = `transaction`.`test_case_id`)))
         JOIN `frame` ON ((`transaction`.`transaction_id` = `frame`.`transaction_id`)))
         JOIN `resource` ON ((`frame`.`frame_id` = `resource`.`frame_id`)))
+
+
+Delete data:
+delete t
+from timing t
+inner join frame f
+on t.frame_id = f.frame_id
+inner join transaction tr
+on f.transaction_id = tr.transaction_id
+and tr.test_case_id=1
 '''
 
 DB = MySQLDatabase("frameway", host="127.0.0.1", port=3306, user="dbuser", passwd="dbuser")
@@ -267,6 +277,60 @@ def addResourceTimes(transaction):
 def TransactionStartTime(transaction):
     return Transaction.select(Transaction.transaction_start_time).where(Transaction.transaction_id == transaction.transaction_id).get().transaction_start_time
 
+def deleteTestRun(testCaseId):
+    deleteResources(testCaseId)
+    deleteTimings(testCaseId)
+    deleteFrames(testCaseId)
+    deleteTransactions(testCaseId)
+    deleteTestCase(testCaseId)
+
+
+def deleteTimings(testCaseId):
+    query = 'delete t ' \
+            'from timing t ' \
+            'inner join frame f ' \
+            'on t.frame_id = f.frame_id ' \
+            'inner join transaction tr ' \
+            'on f.transaction_id = tr.transaction_id ' \
+            'and tr.test_case_id=%s' \
+            % testCaseId
+    DB.execute_sql(query)
+
+def deleteResources(testCaseId):
+    query = 'delete r ' \
+            'from resource r ' \
+            'inner join frame f ' \
+            'on r.frame_id = f.frame_id ' \
+            'inner join transaction tr ' \
+            'on f.transaction_id = tr.transaction_id ' \
+            'and tr.test_case_id=%s' \
+            % testCaseId
+    DB.execute_sql(query)
+
+def deleteFrames(testCaseId):
+    query = 'delete f ' \
+            'from frame f ' \
+            'inner join transaction tr ' \
+            'on f.transaction_id = tr.transaction_id ' \
+            'and tr.test_case_id=%s' \
+            % testCaseId
+    DB.execute_sql(query)
+
+def deleteTransactions(testCaseId):
+    query = 'delete tr ' \
+            'from transaction tr ' \
+            'where tr.test_case_id=%s' \
+            % testCaseId
+    DB.execute_sql(query)
+
+def deleteTestCase(testCaseId):
+    query = 'SET FOREIGN_KEY_CHECKS=0; ' \
+            'delete ' \
+            'from testcase ' \
+            'where test_case_id=%s; ' \
+            'SET FOREIGN_KEY_CHECKS=1' \
+            % testCaseId
+    DB.execute_sql(query)
 
 def init():
     DB.connect()

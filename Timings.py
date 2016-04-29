@@ -21,6 +21,7 @@ def init(_driver, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoad
     global driver
     global waitForLoadedTimeOut
     global waitForLoadedInsterval
+    global verbosity
     driver = _driver
     DB.init()
     testCase = DB.insertTestCase(timeStamp(), _comment)
