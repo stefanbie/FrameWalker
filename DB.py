@@ -332,6 +332,10 @@ def deleteTestCase(testCaseId):
             % testCaseId
     DB.execute_sql(query)
 
+
+def testCases():
+    return TestCase.select().execute()
+
 def init():
     DB.connect()
     if not TestCase.table_exists():
