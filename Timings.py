@@ -135,7 +135,11 @@ def clearResourceTimings():
 
 
 def getAttributes(element):
-    return driver.execute_script("var items = {}; for (index = 0; index < arguments[0].attributes.length; ++index) { items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value }; return items;", element)
+    return driver.execute_script("var items = {}; "
+                                 "for (index = 0; index < arguments[0].attributes.length; ++index) "
+                                 "{ items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value }; "
+                                 "return items;"
+                                 , element)
 
 
 def hashedSRC(src):
