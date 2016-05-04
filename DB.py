@@ -1,5 +1,4 @@
 from peewee import *
-
 '''
 Setup:
     Install MSQL
@@ -69,10 +68,9 @@ VIEW `all` AS
         JOIN `transaction` ON ((`testcase`.`test_case_id` = `transaction`.`test_case_id`)))
         JOIN `frame` ON ((`transaction`.`transaction_id` = `frame`.`transaction_id`)))
         JOIN `resource` ON ((`frame`.`frame_id` = `resource`.`frame_id`)))
-
 '''
 
-DB = MySQLDatabase("frameway", host="127.0.0.1", port=3306, user="dbuser", passwd="dbuser")
+DB = None
 timeStampFormat = '%Y-%m-%d %H:%M:%S.%f'
 
 
@@ -168,6 +166,7 @@ def insertTransaction(testCaseID, timeStamp, transactionName, iteration):
                               transaction_timestamp=timeStamp,
                               transaction_name=transactionName,
                               transaction_iteration=iteration)
+
 
 def insertFrame(transactionID, frameStructureId, src, hashedSrc, attributes):
     return Frame.create(transaction=transactionID,
@@ -319,6 +318,7 @@ def TransactionStartTime(transaction):
         .where(Transaction.transaction_id == transaction.transaction_id)\
         .get().transaction_start_time
 
+
 def deleteTestRun(testCaseId):
     deleteResources(testCaseId)
     deleteTimings(testCaseId)
@@ -338,6 +338,7 @@ def deleteTimings(testCaseId):
             % testCaseId
     DB.execute_sql(query)
 
+
 def deleteResources(testCaseId):
     query = 'delete r ' \
             'from resource r ' \
@@ -349,6 +350,7 @@ def deleteResources(testCaseId):
             % testCaseId
     DB.execute_sql(query)
 
+
 def deleteFrames(testCaseId):
     query = 'delete f ' \
             'from frame f ' \
@@ -358,12 +360,14 @@ def deleteFrames(testCaseId):
             % testCaseId
     DB.execute_sql(query)
 
+
 def deleteTransactions(testCaseId):
     query = 'delete tr ' \
             'from transaction tr ' \
             'where tr.test_case_id=%s' \
             % testCaseId
     DB.execute_sql(query)
+
 
 def deleteTestCase(testCaseId):
     query = 'SET FOREIGN_KEY_CHECKS=0; ' \
@@ -378,7 +382,10 @@ def deleteTestCase(testCaseId):
 def testCases():
     return TestCase.select().execute()
 
-def init():
+
+def init(dbName, host, port, user, password):
+    global DB
+    DB = MySQLDatabase(dbName, host=host, port=port, user=user, passwd=password)
     DB.connect()
     if not TestCase.table_exists():
         addTables()
