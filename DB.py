@@ -70,9 +70,9 @@ VIEW `all` AS
         JOIN `resource` ON ((`frame`.`frame_id` = `resource`.`frame_id`)))
 '''
 
-DB = None
-timeStampFormat = '%Y-%m-%d %H:%M:%S.%f'
 
+timeStampFormat = '%Y-%m-%d %H:%M:%S.%f'
+DB = MySQLDatabase("frameway", host="127.0.0.1", port=3306, user="dbuser", password="dbuser")
 
 class BaseModel(Model):
     class Meta:
@@ -383,9 +383,10 @@ def testCases():
     return TestCase.select().execute()
 
 
-def init(dbName, host, port, user, password):
-    global DB
-    DB = MySQLDatabase(dbName, host=host, port=port, user=user, passwd=password)
+#def init(dbName, host, port, user, password):
+def init():
+    #global DB
+    #DB = MySQLDatabase(dbName, host=host, port=port, user=user, passwd=password)
     DB.connect()
     if not TestCase.table_exists():
         addTables()
