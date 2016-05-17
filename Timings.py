@@ -111,7 +111,6 @@ def saveResources(timing, frame):
 
 
 def addRelativeTimingValues(timing):
-    timing['timing_src'] = driver.current_url
     timing['timing_redirect'] = timing['fetchStart']-timing['navigationStart']
     timing['timing_appcache'] = timing['domainLookupStart'] - timing['fetchStart']
     timing['timing_dns'] = timing['domainLookupEnd'] - timing['domainLookupStart']
