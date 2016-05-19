@@ -26,7 +26,7 @@ def setFrameRecursive(elementPath):
             driver.switch_to.frame(iFrame)
         except Exception:
             return
-        if check_exists_by_xpath(elementPath):
+        if checkExistsByXpath(elementPath):
             elementFound = True
             return
         else:
@@ -34,7 +34,8 @@ def setFrameRecursive(elementPath):
             setFrameRecursive(elementPath)
             driver.switch_to.window(currentWindow)
 
-def check_exists_by_xpath(xpath):
+
+def checkExistsByXpath(xpath):
     '''Checks if the xpath is present in current iFrame'''
     try:
         driver.find_element_by_xpath(xpath)

@@ -395,6 +395,17 @@ def transactionCount(testCaseId):
     return Transaction.select().where(Transaction.test_case == testCaseId).count()
 
 
+def frameAlreadyExist(testCase, iteration, timing):
+    return Timing.select()\
+               .join(Frame)\
+               .join(Transaction)\
+               .join(TestCase)\
+               .where((Timing.navigationStart == timing.get('navigationStart'))
+                      & (Transaction.transaction_iteration == iteration)
+                      & (TestCase.test_case_id == testCase.test_case_id))\
+               .execute().count > 0
+
+
 def init():
     DB.connect()
     if not TestCase.table_exists():

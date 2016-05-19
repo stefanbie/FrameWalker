@@ -74,12 +74,14 @@ def saveIFrams(frameStructureId):
 
 
 def saveFrame(attributes, frameStructureId):
-    src = attributes.get('src')
-    if not src is None and src.startswith('http'):
-        frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
-        timing = saveTiming(frame)
-        if verbosity == 3:
-            saveResources(timing, frame)
+    timing = getTiming()
+    if not DB.frameAlreadyExist(testCase, iteration, timing):
+        src = attributes.get('src')
+        if not src is None and src.startswith('http'):
+            frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
+            timing = saveTiming(frame, timing)
+            if verbosity == 3:
+                saveResources(timing, frame)
 
 
 def getTiming():
@@ -98,8 +100,7 @@ def getResources(timing):
     return resources
 
 
-def saveTiming(frame):
-    timing = getTiming()
+def saveTiming(frame, timing):
     timing = addRelativeTimingValues(timing)
     DB.insertTiming(frame.frame_id, timing)
     return timing
