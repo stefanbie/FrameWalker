@@ -42,11 +42,12 @@ def report(transactionName):
     saveFrame({'src': driver.current_url}, '0')
     saveIFrams('0')
     clearResourceTimings()
-    DB.addTransactionTimes(transaction)
-    DB.addFrameTimes(transaction)
-    DB.addTimingTimes(transaction)
-    if verbosity == 3:
-        DB.addResourceTimes(transaction)
+    if DB.transactionHasFrames(transaction):
+        DB.addTransactionTimes(transaction)
+        DB.addFrameTimes(transaction)
+        DB.addTimingTimes(transaction)
+        if verbosity == 3:
+            DB.addResourceTimes(transaction)
 
 
 def timeStamp():

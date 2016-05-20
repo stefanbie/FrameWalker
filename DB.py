@@ -406,6 +406,10 @@ def frameAlreadyExist(testCase, iteration, timing):
                .execute().count > 0
 
 
+def transactionHasFrames(transaction):
+    return Frame.select().where(Frame.transaction == transaction.transaction_id).execute().count > 0
+
+
 def init():
     DB.connect()
     if not TestCase.table_exists():
