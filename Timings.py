@@ -76,14 +76,18 @@ def saveIFrams(frameStructureId):
 
 
 def saveFrame(attributes, frameStructureId):
+    src = attributes.get('src')
     timing = getTiming()
-    if not DB.frameAlreadyExist(testCase, iteration, timing) | (verbosity == 3 & (len(json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))) > 0)):
-        src = attributes.get('src')
+    if DB.frameAlreadyExist(testCase, iteration, timing):
+        if len(getResources(timing)) > 0:
+            frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
+            saveResources(frame, timing)
+    else:
         if not src is None and src.startswith('http'):
             frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
             timing = saveTiming(frame, timing)
             if verbosity == 3:
-                saveResources(timing, frame)
+                saveResources(frame, timing)
 
 
 def getTiming():
