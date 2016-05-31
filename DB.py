@@ -82,7 +82,7 @@ Other:
 
 timeStampFormat = '%Y-%m-%d %H:%M:%S.%f'
 DB = MySQLDatabase("frameway", host="127.0.0.1", port=3306, user="dbuser", password="dbuser")
-
+# Jens was here
 class BaseModel(Model):
     class Meta:
         database = DB
