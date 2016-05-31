@@ -1,6 +1,7 @@
 import DB
 import sys
 import random
+import subprocess
 import os
 
 '''
@@ -49,7 +50,6 @@ closing_phrases = {'Goodbye...', 'See you later...', 'Hope to see you again...',
 while True:
     testcases = DB.testCases()
 
-
     template = "{0:10}{1:30}{2:20}{3:15}"
     print("====================== [ DATABASE CONTENTS ] ======================\n")
     print(template.format('TC ID', 'TimeStamp', 'TransactionCount', 'Comment'))
@@ -62,26 +62,34 @@ while True:
     ids = [testcase.test_case_id for testcase in testcases]
 
     try:
-        nputstr = '{}'.format(input("\nTest case ID to delete? : "))
+        nputstr = '{}'.format(input("\nEnter command [delete] [backup] [quit] : "))
         if nputstr.lower() in {"q", "quit", "exit"}:
             break
-        selection = parseIntSet(nputstr)
-        if selection is None or len(selection) == 0:
-            print("Not a valid input, try again...\n")
-        else:
-            print('\n')
-            for n in selection:
-                if n in ids:
-                    DB.deleteTestRun(n)
-                    print('Deleted test case with id ID: ', n)
-                else:
-                    print('Test case with ID %s does not exists!' % n)
-            print('\n')
+
+        if nputstr.lower() in {"delete"}:
+            test_cases = '{}'.format(input("\nEnter test cases to delete : "))
+            selection = parseIntSet(test_cases)
+            if selection is None or len(selection) == 0:
+                print("Not a valid input, try again...\n")
+            else:
+                print('\n')
+                for n in selection:
+                    if n in ids:
+                        DB.deleteTestRun(n)
+                        print('Deleted test case with id ID: ', n)
+                    else:
+                        print('Test case with ID %s does not exists!' % n)
+                print('\n')
+
+        if nputstr.lower() in {"backup"}:
+            file_name = '{}'.format(input("\nEnter full name of backup file (ex. c:\\temp\\backup.sql) : "))
+            #os.system("mysqldump -u root -padmin frameway > %s" % file_name)
+            FNULL = open(os.devnull, 'w')
+            subprocess.call(["mysqldump", "-uroot", "-padmin", "frameway", ">", "%s" % file_name], shell=True, stdout=FNULL, stderr=subprocess.STDOUT)
+            print("The file", file_name, "has been created\n")
+
     except:
         print("Oh no! Something went wrong.... \n")
         print(sys.exc_info())
 
 print('\n{0}'.format(*random.sample(closing_phrases, 1)))
-
-
-
