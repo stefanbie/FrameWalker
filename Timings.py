@@ -36,18 +36,19 @@ def increaseIteration():
 
 def report(transactionName):
     global transaction
-    transaction = DB.insertTransaction(testCase.test_case_id, timeStamp(), transactionName, iteration)
-    waitForResourcesLoaded()
-    driver.switch_to.default_content()
-    saveFrame({'src': driver.current_url}, '0')
-    saveIFrams('0')
-    clearResourceTimings()
-    if DB.transactionHasFrames(transaction):
-        DB.addTransactionTimes(transaction)
-        DB.addFrameTimes(transaction)
-        DB.addTimingTimes(transaction)
-        if verbosity == 3:
-            DB.addResourceTimes(transaction)
+    if verbosity > 0:
+        transaction = DB.insertTransaction(testCase.test_case_id, timeStamp(), transactionName, iteration)
+        waitForResourcesLoaded()
+        driver.switch_to.default_content()
+        saveFrame({'src': driver.current_url}, '0')
+        saveIFrams('0')
+        clearResourceTimings()
+        if DB.transactionHasFrames(transaction):
+            DB.addTransactionTimes(transaction)
+            DB.addFrameTimes(transaction)
+            DB.addTimingTimes(transaction)
+            if verbosity == 3:
+                DB.addResourceTimes(transaction)
 
 
 def timeStamp():
@@ -76,7 +77,7 @@ def saveIFrams(frameStructureId):
 
 def saveFrame(attributes, frameStructureId):
     timing = getTiming()
-    if not DB.frameAlreadyExist(testCase, iteration, timing):
+    if not DB.frameAlreadyExist(testCase, iteration, timing) | (verbosity == 3 & (len(json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))) > 0)):
         src = attributes.get('src')
         if not src is None and src.startswith('http'):
             frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
