@@ -1,5 +1,6 @@
 import DB
 import sys
+import random
 import os
 
 '''
@@ -43,6 +44,8 @@ def parseIntSet(nputstr=""):
     return selection
 # end parseIntSet
 
+closing_phrases = {'Goodbye...', 'See you later...', 'Hope to see you again...', 'Bye!', 'Later dude!', 'Farewell!', 'So long!', 'Godspeed!', 'Adios!', 'Ciao!', 'Have a good day...', 'Take care...', 'Catch you later!', 'Sayonara!', 'Au revoir!', 'Have a good one!'}
+
 while True:
     testcases = DB.testCases()
 
@@ -77,3 +80,8 @@ while True:
     except:
         print("Oh no! Something went wrong.... \n")
         print(sys.exc_info())
+
+print('\n{0}'.format(*random.sample(closing_phrases, 1)))
+
+
+
