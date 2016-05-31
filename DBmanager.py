@@ -83,10 +83,13 @@ while True:
 
         if nputstr.lower() in {"backup"}:
             file_name = '{}'.format(input("\nEnter full name of backup file (ex. c:\\temp\\backup.sql) : "))
-            #os.system("mysqldump -u root -padmin frameway > %s" % file_name)
-            FNULL = open(os.devnull, 'w')
-            subprocess.call(["mysqldump", "-uroot", "-padmin", "frameway", ">", "%s" % file_name], shell=True, stdout=FNULL, stderr=subprocess.STDOUT)
-            print("The file", file_name, "has been created\n")
+            if file_name:
+                #os.system("mysqldump -u root -padmin frameway > %s" % file_name)
+                FNULL = open(os.devnull, 'w')
+                subprocess.call(["mysqldump", "-uroot", "-padmin", "frameway", ">", "%s" % file_name], shell=True, stdout=FNULL, stderr=subprocess.STDOUT)
+                print("The file", file_name, "has been created.\n")
+            else:
+                print("Empty file name given! Aborting...\n")
 
     except:
         print("Oh no! Something went wrong.... \n")
