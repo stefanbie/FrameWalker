@@ -66,7 +66,7 @@ while True:
         if nputstr.lower() in {"q", "quit", "exit"}:
             break
 
-        if nputstr.lower() in {"delete"}:
+        if nputstr.lower() in {"delete", "d"}:
             test_cases = '{}'.format(input("\nEnter test cases to delete : "))
             selection = parseIntSet(test_cases)
             if selection is None or len(selection) == 0:
@@ -81,15 +81,22 @@ while True:
                         print('Test case with ID %s does not exists!' % n)
                 print('\n')
 
-        if nputstr.lower() in {"backup"}:
-            file_name = '{}'.format(input("\nEnter full name of backup file (ex. c:\\temp\\backup.sql) : "))
-            if file_name:
-                #os.system("mysqldump -u root -padmin frameway > %s" % file_name)
-                FNULL = open(os.devnull, 'w')
-                subprocess.call(["mysqldump", "-uroot", "-padmin", "frameway", ">", "%s" % file_name], shell=True, stdout=FNULL, stderr=subprocess.STDOUT)
-                print("The file", file_name, "has been created.\n")
-            else:
-                print("Empty file name given! Aborting...\n")
+        if nputstr.lower() in {"backup", "b"}:
+            _success = False
+            while not _success:
+                file_name = '{}'.format(input("\nEnter an absolute path to create a backup file (ex. c:\\temp\\backup.sql) : "))
+                if file_name:
+                    if os.path.isabs(file_name):
+                        #os.system("mysqldump -u root -padmin frameway > %s" % file_name)
+                        FNULL = open(os.devnull, 'w')
+                        subprocess.call(["mysqldump", "-uroot", "-padmin", "frameway", ">", "%s" % file_name], shell=True, stdout=FNULL, stderr=subprocess.STDOUT)
+                        print("The file", file_name, "has been created.\n")
+                        _success = True
+                    else:
+                        print("You are required to enter an absolute path! Try again...\n")
+                else:
+                    print("Empty file name given! Aborting...\n")
+                    break
 
     except:
         print("Oh no! Something went wrong.... \n")
