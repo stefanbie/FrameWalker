@@ -3,6 +3,7 @@ import sys
 import random
 import subprocess
 import os
+import shutil
 
 '''
     Method for parsing input from user to a sequence of numbers.
@@ -89,11 +90,14 @@ while True:
                     if os.path.isabs(file_name):
                         #os.system("mysqldump -u root -padmin frameway > %s" % file_name)
                         FNULL = open(os.devnull, 'w')
+                        if shutil.which("mysqldump") is None:
+                            print("ERROR: mysqldump.exe is not accessible! Probably the path of the executable is not set in PATH-environment-variable...\n")
+                            break
                         subprocess.call(["mysqldump", "-uroot", "-padmin", "frameway", ">", "%s" % file_name], shell=True, stdout=FNULL, stderr=subprocess.STDOUT)
                         print("The file", file_name, "has been created.\n")
                         _success = True
                     else:
-                        print("You are required to enter an absolute path! Try again...\n")
+                        print("ERROR: You are required to enter an absolute path! Try again...\n")
                 else:
                     print("Empty file name given! Aborting...\n")
                     break
