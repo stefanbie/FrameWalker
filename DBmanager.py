@@ -79,7 +79,7 @@ while True:
                         DB.deleteTestRun(n)
                         print('Deleted test case with id ID: ', n)
                     else:
-                        print('Test case with ID %s does not exists!' % n)
+                        print('Test case with ID %s does not exist in the database!' % n)
                 print('\n')
 
         if nputstr.lower() in {"backup", "b"}:
@@ -88,14 +88,14 @@ while True:
                 file_name = '{}'.format(input("\nEnter an absolute path to create a backup file (ex. c:\\temp\\backup.sql) : "))
                 if file_name:
                     if os.path.isabs(file_name):
-                        #os.system("mysqldump -u root -padmin frameway > %s" % file_name)
-                        FNULL = open(os.devnull, 'w')
-                        if shutil.which("mysqldump") is None:
+                        if shutil.which("mysqldump"):
+                            FNULL = open(os.devnull, 'w')
+                            subprocess.call(["mysqldump", "-uroot", "-padmin", "frameway", ">", "%s" % file_name], shell=True, stdout=FNULL, stderr=subprocess.STDOUT)
+                            print("The file", file_name, "has been created.\n")
+                            _success = True
+                        else:
                             print("ERROR: mysqldump.exe is not accessible! Probably the path of the executable is not set in PATH-environment-variable...\n")
                             break
-                        subprocess.call(["mysqldump", "-uroot", "-padmin", "frameway", ">", "%s" % file_name], shell=True, stdout=FNULL, stderr=subprocess.STDOUT)
-                        print("The file", file_name, "has been created.\n")
-                        _success = True
                     else:
                         print("ERROR: You are required to enter an absolute path! Try again...\n")
                 else:
