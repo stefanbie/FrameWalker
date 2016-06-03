@@ -359,6 +359,18 @@ def deleteResources(testCaseId):
     DB.execute_sql(query)
 
 
+def filterResources(transaction, resourceFilter):
+    query = 'delete r ' \
+            'from resource r ' \
+            'inner join frame f ' \
+            'on r.frame_id = f.frame_id ' \
+            'inner join transaction tr ' \
+            'on f.transaction_id = tr.transaction_id ' \
+            'where tr.transaction_id = {0} ' \
+            'and r.resource_name in {1}'.format(transaction.transaction_id, str(resourceFilter).replace('[', '(').replace(']', ')'))
+    DB.execute_sql(query)
+
+
 def deleteFrames(testCaseId):
     query = 'delete f ' \
             'from frame f ' \
@@ -367,6 +379,14 @@ def deleteFrames(testCaseId):
             'and tr.test_case_id=%s' \
             % testCaseId
     DB.execute_sql(query)
+
+def filterFrames(transaction, frameFilter):
+    for filteredFrame in frameFilter:
+        ids = Frame.select(Frame.frame_id).join(Transaction).where(Transaction.transaction_id == transaction.transaction_id and Frame.frame_src == filteredFrame).execute()
+        for id in ids:
+            Resource.delete().where(Resource.frame == id).execute()
+            Timing.delete().where(Timing.frame == id).execute()
+            Frame.delete().where(Frame.frame_id == id).execute()
 
 
 def deleteTransactions(testCaseId):

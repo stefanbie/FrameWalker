@@ -14,19 +14,25 @@ iteration = 0
 waitForLoadedTimeOut = 0
 waitForLoadedInsterval = 0
 verbosity = 0
+resourceFilter = []
+frameFilter = []
 
 
-def init(_driver, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoadedInsterval=3):
+def init(_driver, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoadedInsterval=3, _resourceFilter=None, _frameFilter=None):
     global testCase
     global driver
     global waitForLoadedTimeOut
     global waitForLoadedInsterval
     global verbosity
+    global resourceFilter
+    global frameFilter
     driver = _driver
     testCase = DB.insertTestCase(timeStamp(), _comment)
     waitForLoadedTimeOut = _waitForLoadedTimeOut
     waitForLoadedInsterval = _waitForLoadedInsterval
     verbosity = _verbosity
+    resourceFilter = _resourceFilter
+    frameFilter = _frameFilter
 
 
 def increaseIteration():
@@ -41,13 +47,15 @@ def report(transactionName):
         waitForResourcesLoaded()
         driver.switch_to.default_content()
         saveFrame({'src': driver.current_url}, '0')
-        saveIFrams('0')
+        saveIFrames('0')
         clearResourceTimings()
         if DB.transactionHasFrames(transaction):
+            DB.filterFrames(transaction, frameFilter)
             DB.addTransactionTimes(transaction)
             DB.addFrameTimes(transaction)
             DB.addTimingTimes(transaction)
             if verbosity == 3:
+                DB.filterResources(transaction, resourceFilter)
                 DB.addResourceTimes(transaction)
 
 
@@ -55,7 +63,7 @@ def timeStamp():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
 
 
-def saveIFrams(frameStructureId):
+def saveIFrames(frameStructureId):
     try:
         iFrames = driver.find_elements_by_tag_name('iframe')
     except NoSuchElementException:
@@ -71,7 +79,7 @@ def saveIFrams(frameStructureId):
         saveFrame(attributes, recFrameStructureId)
         clearResourceTimings()
         currentWindow = driver.current_window_handle
-        saveIFrams(recFrameStructureId)
+        saveIFrames(recFrameStructureId)
         driver.switch_to.window(currentWindow)
 
 
@@ -83,7 +91,7 @@ def saveFrame(attributes, frameStructureId):
             frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
             saveResources(frame, timing)
     else:
-        if not src is None and src.startswith('http'):
+        if src is not None:
             frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
             timing = saveTiming(frame, timing)
             if verbosity == 3:
@@ -112,7 +120,7 @@ def saveTiming(frame, timing):
     return timing
 
 
-def saveResources(timing, frame):
+def saveResources(frame, timing):
     resources = getResources(timing)
     DB.insertRecources(frame.frame_id, resources)
 
@@ -152,7 +160,6 @@ def hashedSRC(src):
 
 
 def truncatedSRC(src):
-    src = src.split('/')[2]
     if len(src) > 50:
         src = src[:23] + '....' + src[-23:]
     return src
