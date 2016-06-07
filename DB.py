@@ -414,6 +414,16 @@ def testCases():
 def transactionCount(testCaseId):
     return Transaction.select().where(Transaction.test_case == testCaseId).count()
 
+def comment(testCaseId):
+    try:
+        return TestCase.select(TestCase.test_case_comment).where(TestCase.test_case_id == testCaseId).get().test_case_comment
+    except:
+        return None
+
+def updateComment(testCaseId, comment):
+    TestCase.update(test_case_comment = comment).where(TestCase.test_case_id == testCaseId).execute()
+
+
 
 def frameAlreadyExist(testCase, iteration, timing):
     return Timing.select()\
