@@ -5,6 +5,8 @@ import subprocess
 import os
 import shutil
 
+closing_phrases = {'Goodbye...', 'See you later...', 'Hope to see you again...', 'Bye!', 'Later dude!', 'Farewell!', 'So long!', 'Godspeed!', 'Adios!', 'Ciao!', 'Have a good day...', 'Take care...', 'Catch you later!', 'Sayonara!', 'Au revoir!', 'Have a good one!'}
+
 '''
     Method for parsing input from user to a sequence of numbers.
     Input examples:
@@ -46,13 +48,70 @@ def parseIntSet(nputstr=""):
     return selection
 # end parseIntSet
 
-closing_phrases = {'Goodbye...', 'See you later...', 'Hope to see you again...', 'Bye!', 'Later dude!', 'Farewell!', 'So long!', 'Godspeed!', 'Adios!', 'Ciao!', 'Have a good day...', 'Take care...', 'Catch you later!', 'Sayonara!', 'Au revoir!', 'Have a good one!'}
+def update_comment():
+    test_case = '{}'.format(input("\nEnter ID of test case to change comment : "))
+
+    try:
+        int(test_case)
+    except ValueError:
+        print("Invalid input! Aborting...")
+        return
+
+    current_comment = DB.comment(test_case)
+
+    if current_comment is None:
+        print("Test case does not exist! Aborting...")
+        return
+
+    print("\nCurrent comment for test case ID " + test_case + " is: \"" + str(current_comment) + "\"")
+    new_comment = '{}'.format(input("Enter new comment : "))
+    if new_comment:
+        DB.updateComment(test_case, new_comment)
+    else:
+        print("Empty comment given! Aborting...")
+        return
+
+def backup():
+    file_name = '{}'.format(input("\nEnter an absolute path to create a backup file of the database (ex. c:\\temp\\backup.sql) : "))
+    if file_name:
+        if os.path.isabs(file_name):
+            if shutil.which("mysqldump"):
+                FNULL = open(os.devnull, 'w')
+                subprocess.call(["mysqldump", "-uroot", "-padmin", "frameway", ">", "%s" % file_name],
+                                shell=True, stdout=FNULL, stderr=subprocess.STDOUT)
+                print("The file", file_name, "has been created.")
+            else:
+                print("ERROR: mysqldump.exe is not accessible! Probably the path of the executable is not set in PATH-environment-variable... Aborting!")
+                return
+        else:
+            print("ERROR: You are required to enter an absolute path! Try again...")
+            backup()
+    else:
+        print("Empty file name given! Aborting...")
+        return
+
+def delete_test_cases():
+    test_cases = '{}'.format(input("\nEnter IDs of test cases to delete : "))
+    selection = parseIntSet(test_cases)
+
+    if selection is None or len(selection) == 0:
+        print("Not a valid input! Aborting...")
+        return
+
+    print('\n')
+    for n in selection:
+        if n in ids:
+            DB.deleteTestRun(n)
+            print('Deleted test case with id ID: ', n)
+        else:
+            print('Test case with ID %s does not exist in the database!' % n)
+
 
 while True:
     testcases = DB.testCases()
 
     template = "{0:10}{1:30}{2:20}{3:15}"
-    print("====================== [ DATABASE CONTENTS ] ======================\n")
+    print("\n====================== [ DATABASE CONTENTS ] ======================\n")
     print(template.format('TC ID', 'TimeStamp', 'TransactionCount', 'Comment'))
 
     for testcase in testcases:
@@ -63,44 +122,17 @@ while True:
     ids = [testcase.test_case_id for testcase in testcases]
 
     try:
-        nputstr = '{}'.format(input("\nEnter command [delete] [backup] [quit] : "))
+        nputstr = '{}'.format(input("\nEnter command [delete] [backup] [edit comment] [quit] : "))
         if nputstr.lower() in {"q", "quit", "exit"}:
             break
-
         if nputstr.lower() in {"delete", "d"}:
-            test_cases = '{}'.format(input("\nEnter test cases to delete : "))
-            selection = parseIntSet(test_cases)
-            if selection is None or len(selection) == 0:
-                print("Not a valid input, try again...\n")
-            else:
-                print('\n')
-                for n in selection:
-                    if n in ids:
-                        DB.deleteTestRun(n)
-                        print('Deleted test case with id ID: ', n)
-                    else:
-                        print('Test case with ID %s does not exist in the database!' % n)
-                print('\n')
+            delete_test_cases()
+
+        if nputstr.lower() in {"edit comment", "e"}:
+            update_comment()
 
         if nputstr.lower() in {"backup", "b"}:
-            _success = False
-            while not _success:
-                file_name = '{}'.format(input("\nEnter an absolute path to create a backup file (ex. c:\\temp\\backup.sql) : "))
-                if file_name:
-                    if os.path.isabs(file_name):
-                        if shutil.which("mysqldump"):
-                            FNULL = open(os.devnull, 'w')
-                            subprocess.call(["mysqldump", "-uroot", "-padmin", "frameway", ">", "%s" % file_name], shell=True, stdout=FNULL, stderr=subprocess.STDOUT)
-                            print("The file", file_name, "has been created.\n")
-                            _success = True
-                        else:
-                            print("ERROR: mysqldump.exe is not accessible! Probably the path of the executable is not set in PATH-environment-variable...\n")
-                            break
-                    else:
-                        print("ERROR: You are required to enter an absolute path! Try again...\n")
-                else:
-                    print("Empty file name given! Aborting...\n")
-                    break
+            backup()
 
     except:
         print("Oh no! Something went wrong.... \n")
