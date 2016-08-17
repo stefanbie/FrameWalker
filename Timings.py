@@ -104,14 +104,17 @@ def getTiming():
 
 def getResources(timing):
     resources = json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))
+    res = []
     for d in resources:
-        d['resource_absolute_start_time'] = int(timing['navigationStart']) + int(d['startTime'])
-        d['resource_absolute_end_time'] = d['resource_absolute_start_time'] + int(d['duration'])
-        d['resource_time'] = d.pop('duration')
-        d['resource_name'] = d.pop('name')
-        d['resource_start_time'] = d.pop('startTime')
+        r={}
+        r['resource_absolute_start_time'] = int(timing['navigationStart']) + int(d['startTime'])
+        r['resource_absolute_end_time'] = r['resource_absolute_start_time'] + int(d['duration'])
+        r['resource_time'] = d.pop('duration')
+        r['resource_name'] = d.pop('name')
+        r['resource_start_time'] = d.pop('startTime')
         del d['entryType']
-    return resources
+        res.append(r)
+    return res
 
 
 def saveTiming(frame, timing):

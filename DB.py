@@ -81,7 +81,7 @@ Other:
 '''
 
 timeStampFormat = '%Y-%m-%d %H:%M:%S.%f'
-DB = MySQLDatabase("frameway", host="127.0.0.1", port=3306, user="dbuser", password="dbuser")
+DB = MySQLDatabase("frameway", host="127.0.0.1", port=3306, user="dbuser", password="admin")
 # Jens was here
 class BaseModel(Model):
     class Meta:
@@ -120,38 +120,39 @@ class Frame(BaseModel):
 class Timing(BaseModel):
     timing_id = PrimaryKeyField()
     frame = ForeignKeyField(Frame, default=None, null=True, related_name='timing')
-    navigationStart = DoubleField()
-    redirectStart = DoubleField()
-    redirectEnd = DoubleField()
-    fetchStart = DoubleField()
-    domainLookupStart = DoubleField()
-    domainLookupEnd = DoubleField()
-    connectStart = DoubleField()
-    secureConnectionStart = DoubleField()
     connectEnd = DoubleField()
-    requestStart = DoubleField()
-    responseStart = DoubleField()
-    responseEnd = DoubleField()
-    domLoading = DoubleField()
-    domInteractive = DoubleField()
-    domContentLoadedEventStart = DoubleField()
-    domContentLoadedEventEnd = DoubleField()
+    connectStart = DoubleField()
+    domainLookupEnd = DoubleField()
+    domainLookupStart = DoubleField()
     domComplete = DoubleField()
-    loadEventStart = DoubleField()
+    domContentLoadedEventEnd = DoubleField()
+    domContentLoadedEventStart = DoubleField()
+    domInteractive = DoubleField()
+    domLoading = DoubleField()
+    fetchStart = DoubleField()
     loadEventEnd = DoubleField()
-    unloadEventEnd = DoubleField()
-    unloadEventStart = DoubleField()
-    timing_redirect = IntegerField()
+    loadEventStart = DoubleField()
+    msFirstPaint = DoubleField(default=-1)
+    navigationStart = DoubleField()
+    redirectEnd = DoubleField()
+    redirectStart = DoubleField()
+    requestStart = DoubleField()
+    responseEnd = DoubleField()
+    responseStart = DoubleField()
+    secureConnectionStart = DoubleField(default=-1)
     timing_appcache = IntegerField()
+    timing_blocked = IntegerField()
     timing_dns = IntegerField()
     timing_dnstcp = IntegerField()
-    timing_tcp = IntegerField()
-    timing_blocked = IntegerField()
-    timing_request = IntegerField()
     timing_dom = IntegerField()
     timing_onload = IntegerField()
+    timing_redirect = IntegerField()
     timing_relative_start_time = IntegerField(default=-1)
+    timing_request = IntegerField()
+    timing_tcp = IntegerField()
     timing_time = IntegerField(default=-1)
+    unloadEventEnd = DoubleField()
+    unloadEventStart = DoubleField()
 
 
 class Resource(BaseModel):
@@ -426,15 +427,14 @@ def updateComment(testCaseId, comment):
 
 
 def frameAlreadyExist(testCase, iteration, timing):
-    return Timing.select()\
-               .join(Frame)\
-               .join(Transaction)\
-               .join(TestCase)\
-               .where((Timing.navigationStart == timing.get('navigationStart'))
-                      & (Transaction.transaction_iteration == iteration)
-                      & (TestCase.test_case_id == testCase.test_case_id))\
-               .execute().count > 0
-
+   return Timing.select() \
+              .join(Frame) \
+              .join(Transaction) \
+              .join(TestCase) \
+              .where((Timing.navigationStart == timing.get('navigationStart'))
+                     & (Transaction.transaction_iteration == iteration)
+                     & (TestCase.test_case_id == testCase.test_case_id)) \
+              .execute().count > 0
 
 def transactionHasFrames(transaction):
     return Frame.select().where(Frame.transaction == transaction.transaction_id).execute().count > 0
