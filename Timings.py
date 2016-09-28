@@ -34,14 +34,26 @@ def init(_driver, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoad
     resourceFilter = _resourceFilter
     frameFilter = _frameFilter
 
+def setDriver(_driver):
+    global driver
+    driver = _driver
+
+def setIteration(iterationNumber):
+    global iteration
+    iteration = iterationNumber
 
 def increaseIteration():
     global iteration
     iteration += 1
 
+def setLoadInterval(loadinterval):
+    global waitForLoadedInsterval
+    waitForLoadedInsterval = loadinterval
 
 def report(transactionName):
     global transaction
+    print(transactionName)
+    print(iteration)
     if verbosity > 0:
         transaction = DB.insertTransaction(testCase.test_case_id, timeStamp(), transactionName, iteration)
         waitForResourcesLoaded()
@@ -49,6 +61,7 @@ def report(transactionName):
         saveFrame({'src': driver.current_url}, '0')
         saveIFrames('0')
         clearResourceTimings()
+        driver.switch_to.default_content()
         if DB.transactionHasFrames(transaction):
             DB.filterFrames(transaction, frameFilter)
             DB.addTransactionTimes(transaction)
