@@ -383,7 +383,7 @@ def deleteFrames(testCaseId):
 
 def filterFrames(transaction, frameFilter):
     for filteredFrame in frameFilter:
-        ids = Frame.select(Frame.frame_id).join(Transaction).where(Transaction.transaction_id == transaction.transaction_id and Frame.frame_src == filteredFrame).execute()
+        ids = Frame.select(Frame.frame_id).join(Transaction).where(Transaction.transaction_id == transaction.transaction_id and Frame.frame_src.constraints(filteredFrame)).execute()
         for id in ids:
             Resource.delete().where(Resource.frame == id).execute()
             Timing.delete().where(Timing.frame == id).execute()
@@ -438,6 +438,13 @@ def frameAlreadyExist(testCase, iteration, timing):
 
 def transactionHasFrames(transaction):
     return Frame.select().where(Frame.transaction == transaction.transaction_id).execute().count > 0
+
+def frameStructureList(testCaseId):
+    query = 'select distinct transaction.transaction_name, frame.frame_structure_id from frame ' \
+            'join transaction on frame.transaction_id = transaction.transaction_id ' \
+            'where transaction.test_case_id=' + str(testCaseId) +' and frame.frame_src not like "%%startpage%%" and transaction_iteration = 2 order by transaction_name'
+    return DB.execute_sql(query)
+
 
 
 def init():
