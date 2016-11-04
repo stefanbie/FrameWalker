@@ -383,7 +383,7 @@ def deleteFrames(testCaseId):
 
 def filterFrames(transaction, frameFilter):
     for filteredFrame in frameFilter:
-        ids = Frame.select(Frame.frame_id).join(Transaction).where(Transaction.transaction_id == transaction.transaction_id and Frame.frame_src.constraints(filteredFrame)).execute()
+        ids = Frame.select(Frame.frame_id).join(Transaction).where(Transaction.transaction_id == transaction.transaction_id and Frame.frame_src.contains(filteredFrame)).execute()
         for id in ids:
             Resource.delete().where(Resource.frame == id).execute()
             Timing.delete().where(Timing.frame == id).execute()

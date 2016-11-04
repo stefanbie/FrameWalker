@@ -4,6 +4,7 @@ import json
 from selenium.common.exceptions import *
 import time
 import hashlib
+import sys
 
 driver = None
 transactionTimeStamp = ''
@@ -14,6 +15,7 @@ iteration = 0
 waitForLoadedTimeOut = 0
 waitForLoadedInsterval = 0
 verbosity = 0
+javaExceptionWaitTime = 10
 resourceFilter = []
 frameFilter = []
 
@@ -56,24 +58,38 @@ def report(transactionName):
     print(iteration)
     if verbosity > 0:
         transaction = DB.insertTransaction(testCase.test_case_id, timeStamp(), transactionName, iteration)
-        waitForResourcesLoaded()
         driver.switch_to.default_content()
-        saveFrame({'src': driver.current_url}, '0')
+        timing = waitForTimingReady()
+        saveFrame(timing, {'src': driver.current_url}, '0')
         saveIFrames('0')
         clearResourceTimings()
         driver.switch_to.default_content()
         if DB.transactionHasFrames(transaction):
-            DB.filterFrames(transaction, frameFilter)
+            if len(frameFilter) > 0:
+                DB.filterFrames(transaction, frameFilter)
             DB.addTransactionTimes(transaction)
             DB.addFrameTimes(transaction)
             DB.addTimingTimes(transaction)
             if verbosity == 3:
-                DB.filterResources(transaction, resourceFilter)
+                if len(resourceFilter) > 0:
+                    DB.filterResources(transaction, resourceFilter)
                 DB.addResourceTimes(transaction)
 
 
-def timeStamp():
-    return datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
+def saveFrame(timing, attributes, frameStructureId):
+    src = attributes.get('src')
+    if DB.frameAlreadyExist(testCase, iteration, timing):
+        if getNbrOfResources() > 0:
+            frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
+            resources = waitForResourcesLoaded(timing)
+            saveResources(frame, resources)
+    else:
+        if src is not None:
+            frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
+            timing = saveTiming(frame, timing)
+            if verbosity == 3:
+                resources = waitForResourcesLoaded(timing)
+                saveResources(frame, resources)
 
 
 def saveIFrames(frameStructureId):
@@ -89,34 +105,16 @@ def saveIFrames(frameStructureId):
         except Exception:
             clearResourceTimings()
             return
-        saveFrame(attributes, recFrameStructureId)
+        timing = waitForTimingReady()
+        saveFrame(timing, attributes, recFrameStructureId)
         clearResourceTimings()
         currentWindow = driver.current_window_handle
         saveIFrames(recFrameStructureId)
         driver.switch_to.window(currentWindow)
 
 
-def saveFrame(attributes, frameStructureId):
-    src = attributes.get('src')
-    timing = getTiming()
-    if DB.frameAlreadyExist(testCase, iteration, timing):
-        if len(getResources(timing)) > 0:
-            frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
-            saveResources(frame, timing)
-    else:
-        if src is not None:
-            frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
-            timing = saveTiming(frame, timing)
-            if verbosity == 3:
-                saveResources(frame, timing)
-
-
-def getTiming():
-    return json.loads(driver.execute_script("return JSON.stringify(window.performance.timing)"))
-
-
-def getResources(timing):
-    resources = json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))
+def getAdjustedResources(timing):
+    resources = getResources()
     res = []
     for d in resources:
         r={}
@@ -136,8 +134,7 @@ def saveTiming(frame, timing):
     return timing
 
 
-def saveResources(frame, timing):
-    resources = getResources(timing)
+def saveResources(frame, resources):
     DB.insertRecources(frame.frame_id, resources)
 
 
@@ -154,21 +151,62 @@ def addRelativeTimingValues(timing):
     timing['timing_time'] = timing['loadEventEnd'] - timing['navigationStart']
     return timing
 
+def getTiming():
+    for x in range(1, javaExceptionWaitTime):
+        try:
+            return json.loads(driver.execute_script("return JSON.stringify(window.performance.timing)"))
+        except Exception:
+            time.sleep(1)
+    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
+
+
+def getResources():
+    for x in range(1, javaExceptionWaitTime):
+        try:
+            return json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))
+        except Exception:
+            time.sleep(1)
+    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
+
 
 def getNbrOfResources():
-    return driver.execute_script("return window.performance.getEntriesByType('resource').length")
+    for x in range(1, javaExceptionWaitTime):
+        try:
+            return driver.execute_script("return window.performance.getEntriesByType('resource').length")
+        except Exception:
+            time.sleep(1)
+    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
 
 
 def clearResourceTimings():
-    driver.execute_script("window.performance.clearResourceTimings()")
+    for x in range(1, javaExceptionWaitTime):
+        try:
+            return driver.execute_script("return window.performance.clearResourceTimings()")
+        except Exception:
+            time.sleep(1)
+    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
 
 
 def getAttributes(element):
-    return driver.execute_script("var items = {}; "
+    for x in range(1, javaExceptionWaitTime):
+        try:
+            return driver.execute_script("var items = {}; "
                                  "for (index = 0; index < arguments[0].attributes.length; ++index) "
                                  "{ items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value }; "
                                  "return items;"
                                  , element)
+        except Exception:
+            time.sleep(1)
+    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
+
+
+def unixTimeStamp():
+    for x in range(1, javaExceptionWaitTime):
+        try:
+            return driver.execute_script("return Date.now()")
+        except Exception:
+            time.sleep(1)
+    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
 
 
 def hashedSRC(src):
@@ -180,13 +218,29 @@ def truncatedSRC(src):
         src = src[:23] + '....' + src[-23:]
     return src
 
+def waitForTimingReady():
+    time.sleep(1)
+    for x in range(1, int(waitForLoadedTimeOut)):
+        timing = getTiming()
+        connectEnd = timing['loadEventEnd']
+        if connectEnd != 0:
+            return timing
+        time.sleep(1)
+    return None
 
-def waitForResourcesLoaded():
-    lastNbrOfResources = 0
-    for x in range(1, int(waitForLoadedTimeOut/waitForLoadedInsterval)):
-        time.sleep(waitForLoadedInsterval)
-        nbrOfResources = getNbrOfResources()
-        if nbrOfResources > lastNbrOfResources:
-            lastNbrOfResources = nbrOfResources
-        else:
-            break
+
+def timeStamp():
+    return datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
+
+
+def waitForResourcesLoaded(timing):
+    if getNbrOfResources() == 0:
+        return None
+    for x in range(1, int(waitForLoadedTimeOut)):
+        unixTime = unixTimeStamp()
+        resources = getAdjustedResources(timing)
+        a = max(resources, key=lambda x:x['resource_absolute_end_time'])
+        if unixTime - a['resource_absolute_end_time'] > waitForLoadedInsterval*1000:
+            return resources
+        time.sleep(1)
+    return None
