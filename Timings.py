@@ -1,10 +1,10 @@
 import DB
+import JavaScript
 from datetime import datetime
 import json
 from selenium.common.exceptions import *
 import time
 import hashlib
-import sys
 
 driver = None
 transactionTimeStamp = ''
@@ -15,10 +15,11 @@ iteration = 0
 waitForLoadedTimeOut = 0
 waitForLoadedInsterval = 0
 verbosity = 0
-javaExceptionWaitTime = 10
 resourceFilter = []
 frameFilter = []
 
+
+#-----------Init and setters-----------#
 
 def init(_driver, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoadedInsterval=3, _resourceFilter=None, _frameFilter=None):
     global testCase
@@ -29,6 +30,7 @@ def init(_driver, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoad
     global resourceFilter
     global frameFilter
     driver = _driver
+    JavaScript.setDriver(driver)
     testCase = DB.insertTestCase(timeStamp(), _comment)
     waitForLoadedTimeOut = _waitForLoadedTimeOut
     waitForLoadedInsterval = _waitForLoadedInsterval
@@ -39,6 +41,7 @@ def init(_driver, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoad
 def setDriver(_driver):
     global driver
     driver = _driver
+    JavaScript.setDriver(driver)
 
 def setIteration(iterationNumber):
     global iteration
@@ -52,6 +55,8 @@ def setLoadInterval(loadinterval):
     global waitForLoadedInsterval
     waitForLoadedInsterval = loadinterval
 
+#-----------Main functions-----------#
+
 def report(transactionName):
     global transaction
     print(transactionName)
@@ -62,7 +67,7 @@ def report(transactionName):
         timing = waitForTimingReady()
         saveFrame(timing, {'src': driver.current_url}, '0')
         saveIFrames('0')
-        clearResourceTimings()
+        JavaScript.clearResourceTimings()
         driver.switch_to.default_content()
         if DB.transactionHasFrames(transaction):
             if len(frameFilter) > 0:
@@ -79,16 +84,16 @@ def report(transactionName):
 def saveFrame(timing, attributes, frameStructureId):
     src = attributes.get('src')
     if DB.frameAlreadyExist(testCase, iteration, timing):
-        if getNbrOfResources() > 0:
+        if JavaScript.getNbrOfResources() > 0:
             frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
-            resources = waitForResourcesLoaded(timing)
+            resources = waitForResourcesReady(timing)
             saveResources(frame, resources)
     else:
         if src is not None:
             frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
-            timing = saveTiming(frame, timing)
+            saveTiming(frame, timing)
             if verbosity == 3:
-                resources = waitForResourcesLoaded(timing)
+                resources = waitForResourcesReady(timing)
                 saveResources(frame, resources)
 
 
@@ -100,21 +105,61 @@ def saveIFrames(frameStructureId):
     for nbr, iFrame in enumerate(iFrames):
         recFrameStructureId = frameStructureId + "," + str(nbr)
         try:
-            attributes = getAttributes(iFrame)
+            attributes = JavaScript.getAttributes(iFrame)
             driver.switch_to.frame(iFrame)
         except Exception:
-            clearResourceTimings()
+            JavaScript.clearResourceTimings()
             return
         timing = waitForTimingReady()
         saveFrame(timing, attributes, recFrameStructureId)
-        clearResourceTimings()
+        JavaScript.clearResourceTimings()
         currentWindow = driver.current_window_handle
         saveIFrames(recFrameStructureId)
         driver.switch_to.window(currentWindow)
 
+#-----------Help Functions-----------#
 
-def getAdjustedResources(timing):
-    resources = getResources()
+def waitForTimingReady():
+    time.sleep(1)
+    for x in range(1, int(waitForLoadedTimeOut)):
+        timing = getTiming()
+        connectEnd = timing['loadEventEnd']
+        if connectEnd != 0:
+            return timing
+        time.sleep(1)
+    return None
+
+
+def waitForResourcesReady(timing):
+    if JavaScript.getNbrOfResources() == 0:
+        return None
+    for x in range(1, int(waitForLoadedTimeOut)):
+        unixTime = JavaScript.unixTimeStamp()
+        resources = getResources(timing)
+        a = max(resources, key=lambda x:x['resource_absolute_end_time'])
+        if unixTime - a['resource_absolute_end_time'] > waitForLoadedInsterval*1000:
+            return resources
+        time.sleep(1)
+    return None
+
+
+def getTiming():
+    timing = JavaScript.getTiming()
+    timing['timing_redirect'] = timing['fetchStart']-timing['navigationStart']
+    timing['timing_appcache'] = timing['domainLookupStart'] - timing['fetchStart']
+    timing['timing_dns'] = timing['domainLookupEnd'] - timing['domainLookupStart']
+    timing['timing_dnstcp'] = timing['connectStart'] - timing['domainLookupEnd']
+    timing['timing_tcp'] = timing['connectEnd'] - timing['connectStart']
+    timing['timing_blocked'] = timing['requestStart'] - timing['connectEnd']
+    timing['timing_request'] = timing['responseStart'] - timing['requestStart']
+    timing['timing_dom'] = timing['domComplete'] - timing['responseStart']
+    timing['timing_onload'] = timing['loadEventEnd'] - timing['domComplete']
+    timing['timing_time'] = timing['loadEventEnd'] - timing['navigationStart']
+    return timing
+
+
+def getResources(timing):
+    resources = JavaScript.getResources()
     res = []
     for d in resources:
         r={}
@@ -129,85 +174,13 @@ def getAdjustedResources(timing):
 
 
 def saveTiming(frame, timing):
-    timing = addRelativeTimingValues(timing)
     DB.insertTiming(frame.frame_id, timing)
-    return timing
 
 
 def saveResources(frame, resources):
     DB.insertRecources(frame.frame_id, resources)
 
-
-def addRelativeTimingValues(timing):
-    timing['timing_redirect'] = timing['fetchStart']-timing['navigationStart']
-    timing['timing_appcache'] = timing['domainLookupStart'] - timing['fetchStart']
-    timing['timing_dns'] = timing['domainLookupEnd'] - timing['domainLookupStart']
-    timing['timing_dnstcp'] = timing['connectStart'] - timing['domainLookupEnd']
-    timing['timing_tcp'] = timing['connectEnd'] - timing['connectStart']
-    timing['timing_blocked'] = timing['requestStart'] - timing['connectEnd']
-    timing['timing_request'] = timing['responseStart'] - timing['requestStart']
-    timing['timing_dom'] = timing['domComplete'] - timing['responseStart']
-    timing['timing_onload'] = timing['loadEventEnd'] - timing['domComplete']
-    timing['timing_time'] = timing['loadEventEnd'] - timing['navigationStart']
-    return timing
-
-def getTiming():
-    for x in range(1, javaExceptionWaitTime):
-        try:
-            return json.loads(driver.execute_script("return JSON.stringify(window.performance.timing)"))
-        except Exception:
-            time.sleep(1)
-    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
-
-
-def getResources():
-    for x in range(1, javaExceptionWaitTime):
-        try:
-            return json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))
-        except Exception:
-            time.sleep(1)
-    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
-
-
-def getNbrOfResources():
-    for x in range(1, javaExceptionWaitTime):
-        try:
-            return driver.execute_script("return window.performance.getEntriesByType('resource').length")
-        except Exception:
-            time.sleep(1)
-    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
-
-
-def clearResourceTimings():
-    for x in range(1, javaExceptionWaitTime):
-        try:
-            return driver.execute_script("return window.performance.clearResourceTimings()")
-        except Exception:
-            time.sleep(1)
-    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
-
-
-def getAttributes(element):
-    for x in range(1, javaExceptionWaitTime):
-        try:
-            return driver.execute_script("var items = {}; "
-                                 "for (index = 0; index < arguments[0].attributes.length; ++index) "
-                                 "{ items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value }; "
-                                 "return items;"
-                                 , element)
-        except Exception:
-            time.sleep(1)
-    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
-
-
-def unixTimeStamp():
-    for x in range(1, javaExceptionWaitTime):
-        try:
-            return driver.execute_script("return Date.now()")
-        except Exception:
-            time.sleep(1)
-    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
-
+#-----------Misc-----------#
 
 def hashedSRC(src):
     return hashlib.md5(src.encode('utf-8')).hexdigest()[:12]
@@ -218,29 +191,6 @@ def truncatedSRC(src):
         src = src[:23] + '....' + src[-23:]
     return src
 
-def waitForTimingReady():
-    time.sleep(1)
-    for x in range(1, int(waitForLoadedTimeOut)):
-        timing = getTiming()
-        connectEnd = timing['loadEventEnd']
-        if connectEnd != 0:
-            return timing
-        time.sleep(1)
-    return None
-
 
 def timeStamp():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
-
-
-def waitForResourcesLoaded(timing):
-    if getNbrOfResources() == 0:
-        return None
-    for x in range(1, int(waitForLoadedTimeOut)):
-        unixTime = unixTimeStamp()
-        resources = getAdjustedResources(timing)
-        a = max(resources, key=lambda x:x['resource_absolute_end_time'])
-        if unixTime - a['resource_absolute_end_time'] > waitForLoadedInsterval*1000:
-            return resources
-        time.sleep(1)
-    return None
