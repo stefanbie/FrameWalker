@@ -18,8 +18,8 @@ Setup:
             SQL SECURITY DEFINER
         VIEW `all` AS
             SELECT
-                `testcase`.`test_case_timestamp` AS `test_case_timestamp`,
-                `testcase`.`test_case_comment` AS `test_case_comment`,
+                `testrun`.`test_run_timestamp` AS `test_run_timestamp`,
+                `testrun`.`test_run_comment` AS `test_run_comment`,
                 `transaction`.`transaction_timestamp` AS `transaction_timestamp`,
                 `transaction`.`transaction_name` AS `transaction_name`,
                 `transaction`.`transaction_iteration` AS `transaction_iteration`,
@@ -37,15 +37,15 @@ Setup:
                 `timing`.`timing_time` AS `timing_time`,
                 `timing`.`timing_relative_start_time` AS `timing_relative_start_time`
             FROM
-                (((`testcase`
-                JOIN `transaction` ON ((`testcase`.`test_case_id` = `transaction`.`test_case_id`)))
+                (((`testrun`
+                JOIN `transaction` ON ((`testrun`.`test_run_id` = `transaction`.`test_run_id`)))
                 JOIN `frame` ON ((`transaction`.`transaction_id` = `frame`.`transaction_id`)))
                 JOIN `timing` ON ((`frame`.`frame_id` = `timing`.`frame_id`)))
             WHERE
-                (`testcase`.`test_case_id` > 0)
+                (`testrun`.`test_run_id` > 0)
             UNION SELECT
-                `testcase`.`test_case_timestamp` AS `test_case_timestamp`,
-                `testcase`.`test_case_comment` AS `test_case_comment`,
+                `testrun`.`test_run_timestamp` AS `test_run_timestamp`,
+                `testrun`.`test_run_comment` AS `test_run_comment`,
                 `transaction`.`transaction_timestamp` AS `transaction_timestamp`,
                 `transaction`.`transaction_name` AS `transaction_name`,
                 `transaction`.`transaction_iteration` AS `transaction_iteration`,
@@ -63,12 +63,12 @@ Setup:
                 NULL AS `timing_time`,
                 NULL AS `timing_relative_start_time`
             FROM
-                (((`testcase`
-                JOIN `transaction` ON ((`testcase`.`test_case_id` = `transaction`.`test_case_id`)))
+                (((`testrun`
+                JOIN `transaction` ON ((`testrun`.`test_run_id` = `transaction`.`test_run_id`)))
                 JOIN `frame` ON ((`transaction`.`transaction_id` = `frame`.`transaction_id`)))
                 JOIN `resource` ON ((`frame`.`frame_id` = `resource`.`frame_id`)))
             WHERE
-                (`testcase`.`test_case_id` > 0)
+                (`testrun`.`test_run_id` > 0)
 
 Other:
 
@@ -77,26 +77,28 @@ Other:
     DROP TABLE `frameway`.`timing`;
     DROP TABLE `frameway`.`frame`;
     DROP TABLE `frameway`.`transaction`;
-    DROP TABLE `frameway`.`testcase`
+    DROP TABLE `frameway`.`testrun`
 '''
 
 timeStampFormat = '%Y-%m-%d %H:%M:%S.%f'
 DB = MySQLDatabase("frameway", host="127.0.0.1", port=3306, user="dbuser", password="admin")
-# Jens was here
+
 class BaseModel(Model):
     class Meta:
         database = DB
 
 
-class TestCase(BaseModel):
-    test_case_id = PrimaryKeyField()
-    test_case_timestamp = DateTimeField(timeStampFormat)
-    test_case_comment = TextField()
+class TestRun(BaseModel):
+    test_run_id = PrimaryKeyField()
+    test_run_timestamp = DateTimeField(timeStampFormat)
+    test_run_comment = TextField()
+    test_run_product = TextField()
+    test_run_release = TextField()
 
 
 class Transaction(BaseModel):
     transaction_id = PrimaryKeyField()
-    test_case = ForeignKeyField(TestCase, related_name='transaction')
+    test_run = ForeignKeyField(TestRun, related_name='transaction')
     transaction_name = CharField()
     transaction_timestamp = DateTimeField(timeStampFormat)
     transaction_iteration = IntegerField()
@@ -166,12 +168,12 @@ class Resource(BaseModel):
     resource_time = IntegerField(default=-1)
 
 
-def insertTestCase(timeStamp, comment):
-    return TestCase.create(test_case_timestamp=timeStamp, test_case_comment=comment)
+def insertTestRun(timeStamp, product, release, comment):
+    return TestRun.create(test_run_timestamp=timeStamp, test_run_product=product, test_run_release=release, test_run_comment=comment)
 
 
-def insertTransaction(testCaseID, timeStamp, transactionName, iteration):
-    return Transaction.create(test_case=testCaseID,
+def insertTransaction(testRunID, timeStamp, transactionName, iteration):
+    return Transaction.create(test_run=testRunID,
                               transaction_timestamp=timeStamp,
                               transaction_name=transactionName,
                               transaction_iteration=iteration)
@@ -328,35 +330,35 @@ def TransactionStartTime(transaction):
         .get().transaction_start_time
 
 
-def deleteTestRun(testCaseId):
-    deleteResources(testCaseId)
-    deleteTimings(testCaseId)
-    deleteFrames(testCaseId)
-    deleteTransactions(testCaseId)
-    deleteTestCase(testCaseId)
+def deleteTestRun(testRunId):
+    deleteResources(testRunId)
+    deleteTimings(testRunId)
+    deleteFrames(testRunId)
+    deleteTransactions(testRunId)
+    deleteTestRun(testRunId)
 
 
-def deleteTimings(testCaseId):
+def deleteTimings(testRunId):
     query = 'delete t ' \
             'from timing t ' \
             'inner join frame f ' \
             'on t.frame_id = f.frame_id ' \
             'inner join transaction tr ' \
             'on f.transaction_id = tr.transaction_id ' \
-            'and tr.test_case_id=%s' \
-            % testCaseId
+            'and tr.test_run_id=%s' \
+            % testRunId
     DB.execute_sql(query)
 
 
-def deleteResources(testCaseId):
+def deleteResources(testRunId):
     query = 'delete r ' \
             'from resource r ' \
             'inner join frame f ' \
             'on r.frame_id = f.frame_id ' \
             'inner join transaction tr ' \
             'on f.transaction_id = tr.transaction_id ' \
-            'and tr.test_case_id=%s' \
-            % testCaseId
+            'and tr.test_run_id=%s' \
+            % testRunId
     DB.execute_sql(query)
 
 
@@ -372,13 +374,13 @@ def filterResources(transaction, resourceFilter):
     DB.execute_sql(query)
 
 
-def deleteFrames(testCaseId):
+def deleteFrames(testRunId):
     query = 'delete f ' \
             'from frame f ' \
             'inner join transaction tr ' \
             'on f.transaction_id = tr.transaction_id ' \
-            'and tr.test_case_id=%s' \
-            % testCaseId
+            'and tr.test_run_id=%s' \
+            % testRunId
     DB.execute_sql(query)
 
 def filterFrames(transaction, frameFilter):
@@ -390,66 +392,66 @@ def filterFrames(transaction, frameFilter):
             Frame.delete().where(Frame.frame_id == id).execute()
 
 
-def deleteTransactions(testCaseId):
+def deleteTransactions(testRunId):
     query = 'delete tr ' \
             'from transaction tr ' \
-            'where tr.test_case_id=%s' \
-            % testCaseId
+            'where tr.test_run_id=%s' \
+            % testRunId
     DB.execute_sql(query)
 
 
-def deleteTestCase(testCaseId):
+def deleteTestRun(testRunId):
     query = 'SET FOREIGN_KEY_CHECKS=0; ' \
             'delete ' \
-            'from testcase ' \
-            'where test_case_id=%s; ' \
+            'from testrun ' \
+            'where test_run_id=%s; ' \
             'SET FOREIGN_KEY_CHECKS=1' \
-            % testCaseId
+            % testRunId
     DB.execute_sql(query)
 
 
-def testCases():
-    return TestCase.select().execute()
+def testRuns():
+    return TestRun.select().execute()
 
 
-def transactionCount(testCaseId):
-    return Transaction.select().where(Transaction.test_case == testCaseId).count()
+def transactionCount(testRunId):
+    return Transaction.select().where(Transaction.test_run == testRunId).count()
 
-def comment(testCaseId):
+def comment(testRunId):
     try:
-        return TestCase.select(TestCase.test_case_comment).where(TestCase.test_case_id == testCaseId).get().test_case_comment
+        return TestRun.select(TestRun.test_run_comment).where(TestRun.test_run_id == testRunId).get().test_run_comment
     except:
         return None
 
-def updateComment(testCaseId, comment):
-    TestCase.update(test_case_comment = comment).where(TestCase.test_case_id == testCaseId).execute()
+def updateComment(testRunId, comment):
+    TestRun.update(test_run_comment = comment).where(TestRun.test_run_id == testRunId).execute()
 
 
 
-def frameAlreadyExist(testCase, iteration, timing):
+def frameAlreadyExist(testRun, iteration, timing):
    return Timing.select() \
               .join(Frame) \
               .join(Transaction) \
-              .join(TestCase) \
+              .join(TestRun) \
               .where((Timing.navigationStart == timing.get('navigationStart'))
                      & (Transaction.transaction_iteration == iteration)
-                     & (TestCase.test_case_id == testCase.test_case_id)) \
+                     & (TestRun.test_run_id == testRun.test_run_id)) \
               .execute().count > 0
 
 def transactionHasFrames(transaction):
     return Frame.select().where(Frame.transaction == transaction.transaction_id).execute().count > 0
 
-def frameStructureList(testCaseId):
+def frameStructureList(testRunId):
     query = 'select distinct transaction.transaction_name, frame.frame_structure_id from frame ' \
             'join transaction on frame.transaction_id = transaction.transaction_id ' \
-            'where transaction.test_case_id=' + str(testCaseId) +' and frame.frame_src not like "%%startpage%%" and transaction_iteration = 2 order by transaction_name'
+            'where transaction.test_run_id=' + str(testRunId) +' and frame.frame_src not like "%%startpage%%" and transaction_iteration = 2 order by transaction_name'
     return DB.execute_sql(query)
 
 
 
 def init():
     DB.connect()
-    if not TestCase.table_exists():
+    if not TestRun.table_exists():
         addTables()
 
 
@@ -459,7 +461,7 @@ def reconnect():
 
 
 def addTables():
-    DB.create_tables([TestCase, Transaction, Frame, Resource, Timing])
+    DB.create_tables([TestRun, Transaction, Frame, Resource, Timing])
 
 
 def destroy():

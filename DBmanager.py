@@ -49,24 +49,24 @@ def parseIntSet(nputstr=""):
 # end parseIntSet
 
 def update_comment():
-    test_case = '{}'.format(input("\nEnter ID of test case to change comment : "))
+    test_run = '{}'.format(input("\nEnter ID of test case to change comment : "))
 
     try:
-        int(test_case)
+        int(test_run)
     except ValueError:
         print("Invalid input! Aborting...")
         return
 
-    current_comment = DB.comment(test_case)
+    current_comment = DB.comment(test_run)
 
     if current_comment is None:
         print("Test case does not exist! Aborting...")
         return
 
-    print("\nCurrent comment for test case ID " + test_case + " is: \"" + str(current_comment) + "\"")
+    print("\nCurrent comment for test case ID " + test_run + " is: \"" + str(current_comment) + "\"")
     new_comment = '{}'.format(input("Enter new comment : "))
     if new_comment:
-        DB.updateComment(test_case, new_comment)
+        DB.updateComment(test_run, new_comment)
     else:
         print("Empty comment given! Aborting...")
         return
@@ -90,9 +90,9 @@ def backup():
         print("Empty file name given! Aborting...")
         return
 
-def delete_test_cases():
-    test_cases = '{}'.format(input("\nEnter IDs of test cases to delete : "))
-    selection = parseIntSet(test_cases)
+def delete_test_runs():
+    test_runs = '{}'.format(input("\nEnter IDs of test cases to delete : "))
+    selection = parseIntSet(test_runs)
 
     if selection is None or len(selection) == 0:
         print("Not a valid input! Aborting...")
@@ -108,25 +108,25 @@ def delete_test_cases():
 
 
 while True:
-    testcases = DB.testCases()
+    testruns = DB.testRuns()
 
-    template = "{0:10}{1:30}{2:20}{3:15}"
+    template = "{0:10}{1:30}{2:20}{3:25}{4:10}{5:50}"
     print("\n====================== [ DATABASE CONTENTS ] ======================\n")
-    print(template.format('TC ID', 'TimeStamp', 'TransactionCount', 'Comment'))
+    print(template.format('TC ID', 'TimeStamp', 'TransactionCount', 'Product', 'Release', 'Comment'))
 
-    for testcase in testcases:
-        testCaseId = testcase.test_case_id
-        transactionCount = DB.transactionCount(testCaseId)
-        print(template.format(str(testcase.test_case_id), str(testcase.test_case_timestamp), str(transactionCount), str(testcase.test_case_comment)))
+    for testrun in testruns:
+        testRunId = testrun.test_run_id
+        transactionCount = DB.transactionCount(testRunId)
+        print(template.format(str(testrun.test_run_id), str(testrun.test_run_timestamp), str(transactionCount), str(testrun.test_run_product), str(testrun.test_run_release), str(testrun.test_run_comment)))
 
-    ids = [testcase.test_case_id for testcase in testcases]
+    ids = [testrun.test_run_id for testrun in testruns]
 
     try:
         nputstr = '{}'.format(input("\nEnter command [delete] [backup] [edit comment] [quit] : "))
         if nputstr.lower() in {"q", "quit", "exit"}:
             break
         if nputstr.lower() in {"delete", "d"}:
-            delete_test_cases()
+            delete_test_runs()
 
         if nputstr.lower() in {"edit comment", "e"}:
             update_comment()

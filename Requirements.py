@@ -2,7 +2,7 @@ import DB
 import itertools
 import operator
 
-testcase_id = 357
+testrun_id = 357
 DB.init()
 timeList = []
 
@@ -19,7 +19,7 @@ def addTime(structure):
         return 3
     return 2
 
-structureList = DB.frameStructureList(testcase_id)
+structureList = DB.frameStructureList(testrun_id)
 for row in structureList:
     entry = [row[0], addTime(row[1])]
     timeList.append(entry)

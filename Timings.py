@@ -9,7 +9,7 @@ import hashlib
 driver = None
 transactionTimeStamp = ''
 mainNavigationStart = 0
-testCase = None
+testRun = None
 transaction = None
 iteration = 0
 waitForLoadedTimeOut = 0
@@ -21,8 +21,8 @@ frameFilter = []
 
 #-----------Init and setters-----------#
 
-def init(_driver, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoadedInsterval=3, _resourceFilter=None, _frameFilter=None):
-    global testCase
+def init(_driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoadedInsterval=3, _resourceFilter=None, _frameFilter=None):
+    global testRun
     global driver
     global waitForLoadedTimeOut
     global waitForLoadedInsterval
@@ -31,7 +31,7 @@ def init(_driver, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoad
     global frameFilter
     driver = _driver
     JavaScript.setDriver(driver)
-    testCase = DB.insertTestCase(timeStamp(), _comment)
+    testRun = DB.insertTestRun(timeStamp(),_product, _release, _comment)
     waitForLoadedTimeOut = _waitForLoadedTimeOut
     waitForLoadedInsterval = _waitForLoadedInsterval
     verbosity = _verbosity
@@ -62,7 +62,7 @@ def report(transactionName):
     print(transactionName)
     print(iteration)
     if verbosity > 0:
-        transaction = DB.insertTransaction(testCase.test_case_id, timeStamp(), transactionName, iteration)
+        transaction = DB.insertTransaction(testRun.test_run_id, timeStamp(), transactionName, iteration)
         driver.switch_to.default_content()
         timing = waitForTimingReady()
         saveFrame(timing, {'src': driver.current_url}, '0')
@@ -83,7 +83,7 @@ def report(transactionName):
 
 def saveFrame(timing, attributes, frameStructureId):
     src = attributes.get('src')
-    if DB.frameAlreadyExist(testCase, iteration, timing):
+    if DB.frameAlreadyExist(testRun, iteration, timing):
         if JavaScript.getNbrOfResources() > 0:
             frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
             resources = waitForResourcesReady(timing)
