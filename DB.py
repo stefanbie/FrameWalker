@@ -6,69 +6,76 @@ Setup:
     pip install peewee
     pip install PyMySQL
 
-    DB:
+DB:
+
     Install MySQL
     Install MySQL Workbench
     Add new schema "frameway"
     In %PROGRAMDATA%\MySQL\MySQL Server X.x\my.ini, remove STRICT_TRANS_TABLES and restart MySQL servcie
-    Create view 'all':
-        CREATE
-            ALGORITHM = UNDEFINED
-            DEFINER = `root`@`localhost`
-            SQL SECURITY DEFINER
-        VIEW `all` AS
-            SELECT
-                `testrun`.`test_run_timestamp` AS `test_run_timestamp`,
-                `testrun`.`test_run_comment` AS `test_run_comment`,
-                `transaction`.`transaction_timestamp` AS `transaction_timestamp`,
-                `transaction`.`transaction_name` AS `transaction_name`,
-                `transaction`.`transaction_iteration` AS `transaction_iteration`,
-                `transaction`.`transaction_time` AS `transaction_time`,
-                `frame`.`frame_attributes` AS `frame_attributes`,
-                `frame`.`frame_hashed_src` AS `frame_hashed_src`,
-                `frame`.`frame_src` AS `frame_src`,
-                `frame`.`frame_relative_start_time` AS `frame_relative_start_time`,
-                `frame`.`frame_time` AS `frame_time`,
-                `frame`.`frame_resources_relative_start_time` AS `frame_resources_relative_start_time`,
-                `frame`.`frame_resources_time` AS `frame_resources_time`,
-                NULL AS `resource_name`,
-                NULL AS `resource_time`,
-                NULL AS `resource_relative_start_time`,
-                `timing`.`timing_time` AS `timing_time`,
-                `timing`.`timing_relative_start_time` AS `timing_relative_start_time`
-            FROM
-                (((`testrun`
-                JOIN `transaction` ON ((`testrun`.`test_run_id` = `transaction`.`test_run_id`)))
-                JOIN `frame` ON ((`transaction`.`transaction_id` = `frame`.`transaction_id`)))
-                JOIN `timing` ON ((`frame`.`frame_id` = `timing`.`frame_id`)))
-            WHERE
-                (`testrun`.`test_run_id` > 0)
-            UNION SELECT
-                `testrun`.`test_run_timestamp` AS `test_run_timestamp`,
-                `testrun`.`test_run_comment` AS `test_run_comment`,
-                `transaction`.`transaction_timestamp` AS `transaction_timestamp`,
-                `transaction`.`transaction_name` AS `transaction_name`,
-                `transaction`.`transaction_iteration` AS `transaction_iteration`,
-                `transaction`.`transaction_time` AS `transaction_time`,
-                `frame`.`frame_attributes` AS `frame_attributes`,
-                `frame`.`frame_hashed_src` AS `frame_hashed_src`,
-                `frame`.`frame_src` AS `frame_src`,
-                `frame`.`frame_relative_start_time` AS `frame_relative_start_time`,
-                `frame`.`frame_time` AS `frame_time`,
-                `frame`.`frame_resources_relative_start_time` AS `frame_resources_relative_start_time`,
-                `frame`.`frame_resources_time` AS `frame_resources_time`,
-                `resource`.`resource_name` AS `resource_name`,
-                `resource`.`resource_time` AS `resource_time`,
-                `resource`.`resource_relative_start_time` AS `resource_relative_start_time`,
-                NULL AS `timing_time`,
-                NULL AS `timing_relative_start_time`
-            FROM
-                (((`testrun`
-                JOIN `transaction` ON ((`testrun`.`test_run_id` = `transaction`.`test_run_id`)))
-                JOIN `frame` ON ((`transaction`.`transaction_id` = `frame`.`transaction_id`)))
-                JOIN `resource` ON ((`frame`.`frame_id` = `resource`.`frame_id`)))
-            WHERE
-                (`testrun`.`test_run_id` > 0)
+
+Create view:
+
+CREATE
+    ALGORITHM = UNDEFINED
+    DEFINER = `root`@`localhost`
+    SQL SECURITY DEFINER
+VIEW `all` AS
+    SELECT
+        `testrun`.`test_run_timestamp` AS `test_run_timestamp`,
+        `testrun`.`test_run_product` AS `test_run_product`,
+        `testrun`.`test_run_release` AS `test_run_release`,
+        `testrun`.`test_run_comment` AS `test_run_comment`,
+        `transaction`.`transaction_timestamp` AS `transaction_timestamp`,
+        `transaction`.`transaction_name` AS `transaction_name`,
+        `transaction`.`transaction_iteration` AS `transaction_iteration`,
+        `transaction`.`transaction_time` AS `transaction_time`,
+        `frame`.`frame_attributes` AS `frame_attributes`,
+        `frame`.`frame_hashed_src` AS `frame_hashed_src`,
+        `frame`.`frame_src` AS `frame_src`,
+        `frame`.`frame_relative_start_time` AS `frame_relative_start_time`,
+        `frame`.`frame_time` AS `frame_time`,
+        `frame`.`frame_resources_relative_start_time` AS `frame_resources_relative_start_time`,
+        `frame`.`frame_resources_time` AS `frame_resources_time`,
+        NULL AS `resource_name`,
+        NULL AS `resource_time`,
+        NULL AS `resource_relative_start_time`,
+        `timing`.`timing_time` AS `timing_time`,
+        `timing`.`timing_relative_start_time` AS `timing_relative_start_time`
+    FROM
+        (((`testrun`
+        JOIN `transaction` ON ((`testrun`.`test_run_id` = `transaction`.`test_run_id`)))
+        JOIN `frame` ON ((`transaction`.`transaction_id` = `frame`.`transaction_id`)))
+        JOIN `timing` ON ((`frame`.`frame_id` = `timing`.`frame_id`)))
+    WHERE
+        (`testrun`.`test_run_product` = 'News')
+    UNION SELECT
+        `testrun`.`test_run_timestamp` AS `test_run_timestamp`,
+        `testrun`.`test_run_product` AS `test_run_product`,
+        `testrun`.`test_run_release` AS `test_run_release`,
+        `testrun`.`test_run_comment` AS `test_run_comment`,
+        `transaction`.`transaction_timestamp` AS `transaction_timestamp`,
+        `transaction`.`transaction_name` AS `transaction_name`,
+        `transaction`.`transaction_iteration` AS `transaction_iteration`,
+        `transaction`.`transaction_time` AS `transaction_time`,
+        `frame`.`frame_attributes` AS `frame_attributes`,
+        `frame`.`frame_hashed_src` AS `frame_hashed_src`,
+        `frame`.`frame_src` AS `frame_src`,
+        `frame`.`frame_relative_start_time` AS `frame_relative_start_time`,
+        `frame`.`frame_time` AS `frame_time`,
+        `frame`.`frame_resources_relative_start_time` AS `frame_resources_relative_start_time`,
+        `frame`.`frame_resources_time` AS `frame_resources_time`,
+        `resource`.`resource_name` AS `resource_name`,
+        `resource`.`resource_time` AS `resource_time`,
+        `resource`.`resource_relative_start_time` AS `resource_relative_start_time`,
+        NULL AS `timing_time`,
+        NULL AS `timing_relative_start_time`
+    FROM
+        (((`testrun`
+        JOIN `transaction` ON ((`testrun`.`test_run_id` = `transaction`.`test_run_id`)))
+        JOIN `frame` ON ((`transaction`.`transaction_id` = `frame`.`transaction_id`)))
+        JOIN `resource` ON ((`frame`.`frame_id` = `resource`.`frame_id`)))
+    WHERE
+        (`testrun`.`test_run_product` = 'News')
 
 Other:
 
@@ -193,11 +200,12 @@ def insertTiming(frameID, timing):
 
 
 def insertRecources(frameID, recourse):
-    if len(recourse) > 0:
-        for item in recourse:
-            item.update({"frame": frameID})
-        with DB.atomic():
-            return Resource.insert_many(recourse).execute()
+    if not recourse is None:
+        if len(recourse) > 0:
+            for item in recourse:
+                item.update({"frame": frameID})
+            with DB.atomic():
+                return Resource.insert_many(recourse).execute()
     return None
 
 

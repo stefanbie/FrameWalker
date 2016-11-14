@@ -2,7 +2,7 @@ from selenium.common.exceptions import NoSuchElementException
 driver = None
 elementFound = False
 
-def init(d):
+def setDriver(d):
     global driver
     driver = d
 

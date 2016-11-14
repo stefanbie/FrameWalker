@@ -5,6 +5,7 @@ import json
 from selenium.common.exceptions import *
 import time
 import hashlib
+import IFrame
 
 driver = None
 transactionTimeStamp = ''
@@ -21,7 +22,7 @@ frameFilter = []
 
 #-----------Init and setters-----------#
 
-def init(_driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoadedInsterval=3, _resourceFilter=None, _frameFilter=None):
+def init(_product, _release, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoadedInsterval=3, _resourceFilter=None, _frameFilter=None):
     global testRun
     global driver
     global waitForLoadedTimeOut
@@ -29,7 +30,7 @@ def init(_driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTime
     global verbosity
     global resourceFilter
     global frameFilter
-    driver = _driver
+    DB.init()
     JavaScript.setDriver(driver)
     testRun = DB.insertTestRun(timeStamp(),_product, _release, _comment)
     waitForLoadedTimeOut = _waitForLoadedTimeOut
