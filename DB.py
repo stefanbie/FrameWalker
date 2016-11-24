@@ -88,7 +88,14 @@ Other:
 '''
 
 timeStampFormat = '%Y-%m-%d %H:%M:%S.%f'
-DB = MySQLDatabase("frameway", host="127.0.0.1", port=3306, user="dbuser", password="admin")
+DB = MySQLDatabase(None)
+
+
+def init(_schemaName, _host, _port, _user, _password):
+    DB.init(_schemaName, host=_host, port=_port, user=_user, password=_password)
+    DB.connect()
+    if not TestRun.table_exists():
+        addTables()
 
 class BaseModel(Model):
     class Meta:
@@ -173,6 +180,10 @@ class Resource(BaseModel):
     resource_absolute_end_time = DoubleField(default=-1)
     resource_relative_start_time = IntegerField(default=-1)
     resource_time = IntegerField(default=-1)
+
+
+def addTables():
+    DB.create_tables([TestRun, Transaction, Frame, Resource, Timing])
 
 
 def insertTestRun(timeStamp, product, release, comment):
@@ -391,6 +402,7 @@ def deleteFrames(testRunId):
             % testRunId
     DB.execute_sql(query)
 
+
 def filterFrames(transaction, frameFilter):
     for filteredFrame in frameFilter:
         ids = Frame.select(Frame.frame_id).join(Transaction).where(Transaction.transaction_id == transaction.transaction_id and Frame.frame_src.contains(filteredFrame)).execute()
@@ -425,11 +437,13 @@ def testRuns():
 def transactionCount(testRunId):
     return Transaction.select().where(Transaction.test_run == testRunId).count()
 
+
 def comment(testRunId):
     try:
         return TestRun.select(TestRun.test_run_comment).where(TestRun.test_run_id == testRunId).get().test_run_comment
     except:
         return None
+
 
 def updateComment(testRunId, comment):
     TestRun.update(test_run_comment = comment).where(TestRun.test_run_id == testRunId).execute()
@@ -446,8 +460,10 @@ def frameAlreadyExist(testRun, iteration, timing):
                      & (TestRun.test_run_id == testRun.test_run_id)) \
               .execute().count > 0
 
+
 def transactionHasFrames(transaction):
     return Frame.select().where(Frame.transaction == transaction.transaction_id).execute().count > 0
+
 
 def frameStructureList(testRunId):
     query = 'select distinct transaction.transaction_name, frame.frame_structure_id from frame ' \
@@ -456,20 +472,11 @@ def frameStructureList(testRunId):
     return DB.execute_sql(query)
 
 
-
-def init():
+def reconnect():
+    destroy()
     DB.connect()
     if not TestRun.table_exists():
         addTables()
-
-
-def reconnect():
-    destroy()
-    init()
-
-
-def addTables():
-    DB.create_tables([TestRun, Transaction, Frame, Resource, Timing])
 
 
 def destroy():

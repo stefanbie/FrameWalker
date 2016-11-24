@@ -22,7 +22,7 @@ frameFilter = []
 
 #-----------Init and setters-----------#
 
-def init(_product, _release, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoadedInsterval=3, _resourceFilter=None, _frameFilter=None):
+def init(_driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoadedInsterval=3, _resourceFilter=None, _frameFilter=None):
     global testRun
     global driver
     global waitForLoadedTimeOut
@@ -30,7 +30,7 @@ def init(_product, _release, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _
     global verbosity
     global resourceFilter
     global frameFilter
-    DB.init()
+    driver = _driver
     JavaScript.setDriver(driver)
     testRun = DB.insertTestRun(timeStamp(),_product, _release, _comment)
     waitForLoadedTimeOut = _waitForLoadedTimeOut
@@ -71,13 +71,13 @@ def report(transactionName):
         JavaScript.clearResourceTimings()
         driver.switch_to.default_content()
         if DB.transactionHasFrames(transaction):
-            if len(frameFilter) > 0:
+            if not frameFilter is None and len(frameFilter) > 0:
                 DB.filterFrames(transaction, frameFilter)
             DB.addTransactionTimes(transaction)
             DB.addFrameTimes(transaction)
             DB.addTimingTimes(transaction)
             if verbosity == 3:
-                if len(resourceFilter) > 0:
+                if not frameFilter is None and len(resourceFilter) > 0:
                     DB.filterResources(transaction, resourceFilter)
                 DB.addResourceTimes(transaction)
 
