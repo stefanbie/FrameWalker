@@ -348,38 +348,38 @@ def TransactionStartTime(transaction):
         .where(Transaction.transaction_id == transaction.transaction_id)\
         .get().transaction_start_time
 
+def deleteTestRuns(testRunIds):
+    for testRunId in testRunIds:
+        transactionIds = Transaction.select(Transaction.transaction_id).where(Transaction.test_run == testRunId).execute()
+        deleteTransactions(transactionIds)
+        TestRun.delete().where(TestRun.test_run_id == testRunId).execute()
 
-def deleteTestRun(testRunId):
-    deleteResources(testRunId)
-    deleteTimings(testRunId)
-    deleteFrames(testRunId)
-    deleteTransactions(testRunId)
-    deleteTestRun(testRunId)
+def deleteTransactions(transactionIds):
+    for transactionId in transactionIds:
+        frameIds = Frame.select(Frame.frame_id).where(Frame.transaction == transactionId).execute()
+        deleteFrames(frameIds)
+        Transaction.delete().where(Transaction.transaction_id == transactionId).execute()
 
+def deleteFrames(frameIds):
+    for frameId in frameIds:
+        timingIds = Timing.select(Timing.timing_id).where(Timing.frame == frameId).execute()
+        deleteTimings(timingIds)
+        resourceIds = Resource.select(Resource.resource_id).where(Resource.frame == frameId).execute()
+        deleteResources(resourceIds)
+        Frame.delete().where(Frame.frame_id == frameId).execute()
 
-def deleteTimings(testRunId):
-    query = 'delete t ' \
-            'from timing t ' \
-            'inner join frame f ' \
-            'on t.frame_id = f.frame_id ' \
-            'inner join transaction tr ' \
-            'on f.transaction_id = tr.transaction_id ' \
-            'and tr.test_run_id=%s' \
-            % testRunId
-    DB.execute_sql(query)
+def deleteTimings(timingIds):
+    for timingId in timingIds:
+        Timing.delete().where(Timing.timing_id == timingId).execute()
 
+def deleteResources(resourceIds):
+    for resourceId in resourceIds:
+        Resource.delete().where(Resource.resource_id == resourceId).execute()
 
-def deleteResources(testRunId):
-    query = 'delete r ' \
-            'from resource r ' \
-            'inner join frame f ' \
-            'on r.frame_id = f.frame_id ' \
-            'inner join transaction tr ' \
-            'on f.transaction_id = tr.transaction_id ' \
-            'and tr.test_run_id=%s' \
-            % testRunId
-    DB.execute_sql(query)
-
+def filterFrames(transaction, frameFilter):
+    for filteredFrame in frameFilter:
+        frameIds = Frame.select(Frame.frame_id).join(Transaction).where(Transaction.transaction_id == transaction.transaction_id and Frame.frame_src.contains(filteredFrame)).execute()
+        deleteFrames(frameIds)
 
 def filterResources(transaction, resourceFilter):
     query = 'delete r ' \
@@ -389,49 +389,15 @@ def filterResources(transaction, resourceFilter):
             'inner join transaction tr ' \
             'on f.transaction_id = tr.transaction_id ' \
             'where tr.transaction_id = {0} ' \
-            'and r.resource_name in {1}'.format(transaction.transaction_id, str(resourceFilter).replace('[', '(').replace(']', ')'))
+            'and r.resource_name in {1}'.format(transaction.transaction_id,
+                                                str(resourceFilter).replace('[', '(').replace(']', ')'))
     DB.execute_sql(query)
-
-
-def deleteFrames(testRunId):
-    query = 'delete f ' \
-            'from frame f ' \
-            'inner join transaction tr ' \
-            'on f.transaction_id = tr.transaction_id ' \
-            'and tr.test_run_id=%s' \
-            % testRunId
-    DB.execute_sql(query)
-
-
-def filterFrames(transaction, frameFilter):
-    for filteredFrame in frameFilter:
-        ids = Frame.select(Frame.frame_id).join(Transaction).where(Transaction.transaction_id == transaction.transaction_id and Frame.frame_src.contains(filteredFrame)).execute()
-        for id in ids:
-            Resource.delete().where(Resource.frame == id).execute()
-            Timing.delete().where(Timing.frame == id).execute()
-            Frame.delete().where(Frame.frame_id == id).execute()
-
-
-def deleteTransactions(testRunId):
-    query = 'delete tr ' \
-            'from transaction tr ' \
-            'where tr.test_run_id=%s' \
-            % testRunId
-    DB.execute_sql(query)
-
-
-def deleteTestRun(testRunId):
-    query = 'SET FOREIGN_KEY_CHECKS=0; ' \
-            'delete ' \
-            'from testrun ' \
-            'where test_run_id=%s; ' \
-            'SET FOREIGN_KEY_CHECKS=1' \
-            % testRunId
-    DB.execute_sql(query)
-
 
 def testRuns():
     return TestRun.select().execute()
+
+def transactions(testRunId):
+    return Transaction.select().where(Transaction.test_run == testRunId).execute()
 
 
 def transactionCount(testRunId):
@@ -448,8 +414,6 @@ def comment(testRunId):
 def updateComment(testRunId, comment):
     TestRun.update(test_run_comment = comment).where(TestRun.test_run_id == testRunId).execute()
 
-
-
 def frameAlreadyExist(testRun, iteration, timing):
    return Timing.select() \
               .join(Frame) \
@@ -460,10 +424,8 @@ def frameAlreadyExist(testRun, iteration, timing):
                      & (TestRun.test_run_id == testRun.test_run_id)) \
               .execute().count > 0
 
-
 def transactionHasFrames(transaction):
     return Frame.select().where(Frame.transaction == transaction.transaction_id).execute().count > 0
-
 
 def frameStructureList(testRunId):
     query = 'select distinct transaction.transaction_name, frame.frame_structure_id from frame ' \
@@ -471,13 +433,11 @@ def frameStructureList(testRunId):
             'where transaction.test_run_id=' + str(testRunId) +' and frame.frame_src not like "%%startpage%%" and transaction_iteration = 2 order by transaction_name'
     return DB.execute_sql(query)
 
-
 def reconnect():
     destroy()
     DB.connect()
     if not TestRun.table_exists():
         addTables()
-
 
 def destroy():
     DB.close()
