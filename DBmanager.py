@@ -77,7 +77,7 @@ def backup():
         if os.path.isabs(file_name):
             if shutil.which("mysqldump"):
                 FNULL = open(os.devnull, 'w')
-                subprocess.call(["mysqldump", "-uroot", "-padmin", "frameway", ">", "%s" % file_name],
+                subprocess.call(["mysqldump", "-uroot", "-padmin", "framewalker", ">", "%s" % file_name],
                                 shell=True, stdout=FNULL, stderr=subprocess.STDOUT)
                 print("The file", file_name, "has been created.")
             else:
@@ -90,8 +90,32 @@ def backup():
         print("Empty file name given! Aborting...")
         return
 
+def delete_transactions():
+    testrun_id = '{}'.format(input("\nEnter test run : "))
+    print('\n')
+    transactions = DB.transactions(testrun_id)
+    template = "{0:20}{1:30}{2:20}{3:25}"
+    print(template.format('Transaction ID', 'Name', 'Iteration', 'Time'))
+    for transaction in transactions:
+        print(template.format(str(transaction.transaction_id), str(transaction.transaction_name), str(transaction.transaction_iteration), str(transaction.transaction_time)))
+
+    transactions = '{}'.format(input("\nEnter IDs of transactions to delete : "))
+    selection = parseIntSet(transactions)
+
+    if selection is None or len(selection) == 0:
+        print("Not a valid input! Aborting...")
+        return
+
+    print('\n')
+    DB.deleteTransactions(selection)
+
+    transactions = DB.transactions(testrun_id)
+    print(template.format('Transaction ID', 'Name', 'Iteration', 'Time'))
+    for transaction in transactions:
+        print(template.format(str(transaction.transaction_id), str(transaction.transaction_name),str(transaction.transaction_iteration), str(transaction.transaction_time)))
+
 def delete_test_runs():
-    test_runs = '{}'.format(input("\nEnter IDs of test cases to delete : "))
+    test_runs = '{}'.format(input("\nEnter IDs of test runs to delete : "))
     selection = parseIntSet(test_runs)
 
     if selection is None or len(selection) == 0:
@@ -99,20 +123,22 @@ def delete_test_runs():
         return
 
     print('\n')
+    DB.deleteTestRuns(selection)
+    '''
     for n in selection:
         if n in ids:
             DB.deleteTestRun(n)
-            print('Deleted test case with id ID: ', n)
+            print('Deleted test run with id ID: ', n)
         else:
-            print('Test case with ID %s does not exist in the database!' % n)
-
-
+            print('Test run with ID %s does not exist in the database!' % n)
+    '''
+DB.init(_schemaName='framewalker', _host='127.0.0.1', _port=3306, _user='dbuser', _password='dbuser')
 while True:
     testruns = DB.testRuns()
 
-    template = "{0:10}{1:30}{2:20}{3:25}{4:10}{5:50}"
+    template = "{0:20}{1:30}{2:20}{3:25}{4:10}{5:50}"
     print("\n====================== [ DATABASE CONTENTS ] ======================\n")
-    print(template.format('TC ID', 'TimeStamp', 'TransactionCount', 'Product', 'Release', 'Comment'))
+    print(template.format('Test run id', 'TimeStamp', 'Transaction count', 'Product', 'Release', 'Comment'))
 
     for testrun in testruns:
         testRunId = testrun.test_run_id
@@ -121,21 +147,24 @@ while True:
 
     ids = [testrun.test_run_id for testrun in testruns]
 
-    try:
-        nputstr = '{}'.format(input("\nEnter command [delete] [backup] [edit comment] [quit] : "))
-        if nputstr.lower() in {"q", "quit", "exit"}:
-            break
-        if nputstr.lower() in {"delete", "d"}:
-            delete_test_runs()
+    #try:
+    nputstr = '{}'.format(input("\nEnter command [delete test run (d)] [delete transaction (dt)] [backup (b)] [edit comment (e)] [quit (q)] : "))
+    if nputstr.lower() in {"q", "quit", "exit"}:
+        break
+    if nputstr.lower() in {"delete test run", "d"}:
+        delete_test_runs()
 
-        if nputstr.lower() in {"edit comment", "e"}:
-            update_comment()
+    if nputstr.lower() in {"delete transactions", "dt"}:
+        delete_transactions()
 
-        if nputstr.lower() in {"backup", "b"}:
-            backup()
+    if nputstr.lower() in {"edit comment", "e"}:
+        update_comment()
 
-    except:
-        print("Oh no! Something went wrong.... \n")
-        print(sys.exc_info())
+    if nputstr.lower() in {"backup", "b"}:
+        backup()
+
+    #except:
+    #   print("Oh no! Something went wrong.... \n")
+    #    print(sys.exc_info())
 
 print('\n{0}'.format(*random.sample(closing_phrases, 1)))
