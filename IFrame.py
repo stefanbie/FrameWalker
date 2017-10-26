@@ -9,9 +9,13 @@ def setDriver(d):
 def setByXpath(elementPath):
     '''Sets the driver to point at the first iFrame where element xPath is found'''
     global elementFound
-    setFrameRecursive(elementPath)
+    driver.switch_to.default_content()
     elementFound = False
-
+    if checkExistsByXpath(elementPath):
+        return True
+    else:
+        setFrameRecursive(elementPath)
+        return elementFound
 
 def setFrameRecursive(elementPath):
     '''Recursively finds and sets the driver to point at the first iFrame where element xPath is found'''
@@ -33,6 +37,7 @@ def setFrameRecursive(elementPath):
             currentWindow = driver.current_window_handle
             setFrameRecursive(elementPath)
             driver.switch_to.window(currentWindow)
+    return
 
 
 def checkExistsByXpath(xpath):
