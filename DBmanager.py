@@ -132,7 +132,7 @@ def delete_test_runs():
         else:
             print('Test run with ID %s does not exist in the database!' % n)
     '''
-DB.init(_schemaName='framewalker', _host='127.0.0.1', _port=3306, _user='dbuser', _password='dbuser')
+DB.init(_schemaName='framewalker', _host='127.0.0.1', _port=3306, _user='dbuser', _password='admin')
 while True:
     testruns = DB.testRuns()
 
