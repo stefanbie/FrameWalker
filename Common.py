@@ -1,4 +1,4 @@
-import Timings
+from framewalker import Timings
 import IFrame
 from selenium import webdriver
 from selenium.webdriver.common.by import By

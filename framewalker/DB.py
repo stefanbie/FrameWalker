@@ -10,7 +10,7 @@ DB:
 
     Install MySQL
     Install MySQL Workbench
-    Add new schema "frameway"
+    Add new schema "framewalker"
     In %PROGRAMDATA%\MySQL\MySQL Server X.x\my.ini, remove STRICT_TRANS_TABLES and restart MySQL servcie
 
 Create view:
@@ -344,9 +344,15 @@ def addResourceTimes(transaction):
 
 def TransactionStartTime(transaction):
     return Transaction\
-        .select(Transaction.transaction_start_time)\
+        .select(Transaction)\
         .where(Transaction.transaction_id == transaction.transaction_id)\
         .get().transaction_start_time
+
+def TransactionTime(transactionId):
+    return Transaction\
+        .select(Transaction)\
+        .where(Transaction.transaction_id == transactionId)\
+        .get().transaction_time
 
 def deleteTestRuns(testRunIds):
     for testRunId in testRunIds:
@@ -399,17 +405,14 @@ def testRuns():
 def transactions(testRunId):
     return Transaction.select().where(Transaction.test_run == testRunId).execute()
 
-
 def transactionCount(testRunId):
     return Transaction.select().where(Transaction.test_run == testRunId).count()
-
 
 def comment(testRunId):
     try:
         return TestRun.select(TestRun.test_run_comment).where(TestRun.test_run_id == testRunId).get().test_run_comment
     except:
         return None
-
 
 def updateComment(testRunId, comment):
     TestRun.update(test_run_comment = comment).where(TestRun.test_run_id == testRunId).execute()

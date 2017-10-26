@@ -1,11 +1,10 @@
-import DB
-import JavaScript
-from datetime import datetime
 import json
-from selenium.common.exceptions import *
 import time
 import hashlib
-import IFrame
+from datetime import datetime
+from selenium.common.exceptions import *
+from framewalker import DB
+from framewalker import JavaScript
 
 driver = None
 transactionTimeStamp = ''
@@ -32,7 +31,7 @@ def init(_driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTime
     global frameFilter
     driver = _driver
     JavaScript.setDriver(driver)
-    testRun = DB.insertTestRun(timeStamp(),_product, _release, _comment)
+    testRun = DB.insertTestRun(timeStamp(), _product, _release, _comment)
     waitForLoadedTimeOut = _waitForLoadedTimeOut
     waitForLoadedInsterval = _waitForLoadedInsterval
     verbosity = _verbosity
@@ -60,8 +59,9 @@ def setLoadInterval(loadinterval):
 
 def report(transactionName):
     global transaction
-    print(transactionName)
-    print(iteration)
+    printlog = {}
+    printlog['transactionName'] = transactionName
+    printlog['iteration'] = iteration
     if verbosity > 0:
         transaction = DB.insertTransaction(testRun.test_run_id, timeStamp(), transactionName, iteration)
         driver.switch_to.default_content()
@@ -80,6 +80,8 @@ def report(transactionName):
                 if not frameFilter is None and len(resourceFilter) > 0:
                     DB.filterResources(transaction, resourceFilter)
                 DB.addResourceTimes(transaction)
+    printlog['TransactionTime'] = DB.TransactionTime(transaction.transaction_id)
+    print(printlog)
 
 
 def saveFrame(timing, attributes, frameStructureId):

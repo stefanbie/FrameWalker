@@ -1,9 +1,9 @@
-import DB
-import sys
-import random
-import subprocess
 import os
+import random
 import shutil
+import subprocess
+
+from framewalker import DB
 
 closing_phrases = {'Goodbye...', 'See you later...', 'Hope to see you again...', 'Bye!', 'Later dude!', 'Farewell!', 'So long!', 'Godspeed!', 'Adios!', 'Ciao!', 'Have a good day...', 'Take care...', 'Catch you later!', 'Sayonara!', 'Au revoir!', 'Have a good one!'}
 
