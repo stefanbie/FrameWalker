@@ -70,9 +70,9 @@ def report(transactionName):
         saveIFrames('0')
         JavaScript.clearResourceTimings()
         driver.switch_to.default_content()
+        if not frameFilter is None and len(frameFilter) > 0:
+            DB.filterFrames(transaction, frameFilter)
         if DB.transactionHasFrames(transaction):
-            if not frameFilter is None and len(frameFilter) > 0:
-                DB.filterFrames(transaction, frameFilter)
             DB.addTransactionTimes(transaction)
             DB.addFrameTimes(transaction)
             DB.addTimingTimes(transaction)
