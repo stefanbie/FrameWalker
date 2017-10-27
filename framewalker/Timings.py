@@ -59,9 +59,6 @@ def setLoadInterval(loadinterval):
 
 def report(transactionName):
     global transaction
-    printlog = {}
-    printlog['transactionName'] = transactionName
-    printlog['iteration'] = iteration
     if verbosity > 0:
         transaction = DB.insertTransaction(testRun.test_run_id, timeStamp(), transactionName, iteration)
         driver.switch_to.default_content()
@@ -80,8 +77,12 @@ def report(transactionName):
                 if not frameFilter is None and len(resourceFilter) > 0:
                     DB.filterResources(transaction, resourceFilter)
                 DB.addResourceTimes(transaction)
-    printlog['TransactionTime'] = DB.TransactionTime(transaction.transaction_id)
-    print(printlog)
+    printLog(transactionName, iteration)
+
+def printLog(transactionName, iteration):
+    template = "{0:20}{1:5}{2:10}"
+    time = (DB.TransactionTime(transaction.transaction_id))
+    print(template.format(transactionName, iteration, time))
 
 
 def saveFrame(timing, attributes, frameStructureId):
