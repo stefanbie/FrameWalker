@@ -17,11 +17,12 @@ waitForLoadedInsterval = 0
 verbosity = 0
 resourceFilter = []
 frameFilter = []
+consoleLog = False
 
 
 #-----------Init and setters-----------#
 
-def init(_driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoadedInsterval=3, _resourceFilter=None, _frameFilter=None):
+def init(_driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoadedInsterval=3, _resourceFilter=None, _frameFilter=None, _consoleLog=False):
     global testRun
     global driver
     global waitForLoadedTimeOut
@@ -29,6 +30,7 @@ def init(_driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTime
     global verbosity
     global resourceFilter
     global frameFilter
+    global consoleLog
     driver = _driver
     JavaScript.setDriver(driver)
     testRun = DB.insertTestRun(timeStamp(), _product, _release, _comment)
@@ -37,6 +39,7 @@ def init(_driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTime
     verbosity = _verbosity
     resourceFilter = _resourceFilter
     frameFilter = _frameFilter
+    consoleLog = _consoleLog
 
 def setDriver(_driver):
     global driver
@@ -77,12 +80,22 @@ def report(transactionName):
                 if not frameFilter is None and len(resourceFilter) > 0:
                     DB.filterResources(transaction, resourceFilter)
                 DB.addResourceTimes(transaction)
-    printLog(transactionName, iteration)
+    if consoleLog:
+        printLog(transactionName, iteration)
 
 def printLog(transactionName, iteration):
-    template = "{0:20}{1:5}{2:10}"
+    template = "{0:5}{1:30}{2:10}"
     time = (DB.TransactionTime(transaction.transaction_id))
-    print(template.format(transactionName, iteration, time))
+    Red = '\033[91m'
+    Black = '\033[90m'
+    Yellow = '\033[93m'
+    if iteration == 1:
+        color = Red
+    elif time == -1:
+        color = Yellow
+    else:
+        color = Black
+    print(color + template.format(str(iteration), transactionName, str(time)))
 
 
 def saveFrame(timing, attributes, frameStructureId):
