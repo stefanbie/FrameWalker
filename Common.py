@@ -6,6 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.common.exceptions import TimeoutException
+import csv
 
 driver = None
 
@@ -32,9 +33,10 @@ def newBP():
 def click_by_xpath(xpath, timeout=30, throwEx=True):
     try:
         element = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable((By.XPATH, xpath)))
-    except TimeoutException:
+    except TimeoutException as e:
         if throwEx:
-            raise(TimeoutException)
+            e.msg = "Timeout when trying to click element"
+            raise e
         return
     element.click()
 
@@ -62,9 +64,14 @@ def js_click_by_xpath_async(xpath, timeout=30):
     driver.execute_script("var _e=arguments[0]; setTimeout(function() { _e.click(); }, 100);", element)
 
 
-def handleException(driver, exception):
+def handleException(transaction, exception):
     while len(driver.window_handles) > 1:
         driver.switch_to_window(driver.window_handles[1])
         driver.close()
         driver.switch_to_window(driver.window_handles[0])
-    print(exception)
+    print(transaction + ":  " + exception.msg)
+    if Timings.CSVlogFilePath != '':
+        with open(Timings.CSVlogFilePath, 'a', newline='') as csvfile:
+            fieldnames = ['timestamp', 'transaction', 'iteration', 'elapsed', 'message']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writerow({'timestamp': '', 'transaction': transaction, 'iteration': '', 'elapsed': '', 'message': exception.msg})
