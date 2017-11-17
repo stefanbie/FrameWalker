@@ -348,6 +348,12 @@ def TransactionStartTime(transaction):
         .where(Transaction.transaction_id == transaction.transaction_id)\
         .get().transaction_start_time
 
+def TransactionById(transactionId):
+    return Transaction\
+        .select(Transaction)\
+        .where(Transaction.transaction_id == transactionId)\
+        .get()
+
 def TransactionTime(transactionId):
     return Transaction\
         .select(Transaction)\
@@ -435,6 +441,11 @@ def frameStructureList(testRunId):
             'join transaction on frame.transaction_id = transaction.transaction_id ' \
             'where transaction.test_run_id=' + str(testRunId) +' and frame.frame_src not like "%%startpage%%" and transaction_iteration = 2 order by transaction_name'
     return DB.execute_sql(query)
+
+def transactionTimes(testrun_id):
+    return Transaction.select(Transaction.transaction_name, fn.Avg(Transaction.transaction_time))\
+        .where((Transaction.test_run == testrun_id) & (Transaction.transaction_time != -1) & (Transaction.transaction_iteration != 1))\
+        .group_by(Transaction.transaction_name)
 
 def reconnect():
     destroy()
