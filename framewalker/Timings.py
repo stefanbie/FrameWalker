@@ -5,6 +5,7 @@ from datetime import datetime
 from selenium.common.exceptions import *
 from framewalker import DB
 from framewalker import JavaScript
+import csv
 
 driver = None
 transactionTimeStamp = ''
@@ -18,11 +19,12 @@ verbosity = 0
 resourceFilter = []
 frameFilter = []
 consoleLog = False
+CSVlogFilePath = ''
 
 
 #-----------Init and setters-----------#
 
-def init(_driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoadedInsterval=3, _resourceFilter=None, _frameFilter=None, _consoleLog=False):
+def init(_driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoadedInsterval=3, _resourceFilter=None, _frameFilter=None, _consoleLog=False, _CSVlogFilePath=''):
     global testRun
     global driver
     global waitForLoadedTimeOut
@@ -31,6 +33,7 @@ def init(_driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTime
     global resourceFilter
     global frameFilter
     global consoleLog
+    global CSVlogFilePath
     driver = _driver
     JavaScript.setDriver(driver)
     testRun = DB.insertTestRun(timeStamp(), _product, _release, _comment)
@@ -40,6 +43,9 @@ def init(_driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTime
     resourceFilter = _resourceFilter
     frameFilter = _frameFilter
     consoleLog = _consoleLog
+    CSVlogFilePath = _CSVlogFilePath
+    if CSVlogFilePath != '':
+        CSVLogInit()
 
 def setDriver(_driver):
     global driver
@@ -80,22 +86,11 @@ def report(transactionName):
                 if not frameFilter is None and len(resourceFilter) > 0:
                     DB.filterResources(transaction, resourceFilter)
                 DB.addResourceTimes(transaction)
+    transaction = DB.TransactionById(transaction.transaction_id)
     if consoleLog:
-        printLog(transactionName, iteration)
-
-def printLog(transactionName, iteration):
-    template = "{0:5}{1:30}{2:10}"
-    time = (DB.TransactionTime(transaction.transaction_id))
-    Red = '\033[91m'
-    Black = '\033[90m'
-    Yellow = '\033[93m'
-    if iteration == 1:
-        color = Red
-    elif time == -1:
-        color = Yellow
-    else:
-        color = Black
-    print(color + template.format(str(iteration), transactionName, str(time)))
+        printConsoleLog()
+    if CSVlogFilePath != '':
+        printCSVLog(message="")
 
 
 def saveFrame(timing, attributes, frameStructureId):
@@ -196,6 +191,36 @@ def saveTiming(frame, timing):
 
 def saveResources(frame, resources):
     DB.insertRecources(frame.frame_id, resources)
+
+#-----------Log-----------#
+
+def printConsoleLog():
+    template = "{0:5}{1:30}{2:10}"
+    Red = '\033[91m'
+    Black = '\033[90m'
+    Yellow = '\033[93m'
+    if iteration == 1:
+        color = Red
+    elif time == -1:
+        color = Yellow
+    else:
+        color = Black
+    print(color + template.format(str(transaction.transaction_iteration), transaction.transaction_name, str(transaction.transaction_time)))
+
+def CSVLogInit():
+    global CSVlogFilePath
+    CSVfilename = datetime.now().strftime(r'\log_%Y-%m-%d_%H-%M-%S.csv')
+    CSVlogFilePath = CSVlogFilePath + CSVfilename
+    with open(CSVlogFilePath, 'w', newline='') as csvfile:
+        fieldnames = ['timestamp', 'transaction', 'iteration', 'elapsed', 'message']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+
+def printCSVLog(message):
+    with open(CSVlogFilePath, 'a', newline='') as csvfile:
+        fieldnames = ['timestamp', 'transaction', 'iteration', 'elapsed', 'message']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writerow({'timestamp': transaction.transaction_timestamp, 'transaction': transaction.transaction_name, 'iteration': transaction.transaction_iteration, 'elapsed': transaction.transaction_time, 'message': message})
 
 #-----------Misc-----------#
 
