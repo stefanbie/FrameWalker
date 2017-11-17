@@ -65,3 +65,20 @@ def unixTimeStamp():
         except Exception:
             time.sleep(1)
     raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
+
+
+def setCookie(cookieName, cookieValue):
+    for x in range(1, javaExceptionWaitTime):
+        try:
+            return driver.execute_script("document.cookie='%s=%s'" % (cookieName,cookieValue))
+        except Exception:
+            time.sleep(1)
+    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
+
+def removeUserProperties():
+    for x in range(1, javaExceptionWaitTime):
+        try:
+            return driver.execute_script("localStorage.clear()")
+        except Exception:
+            time.sleep(1)
+    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
