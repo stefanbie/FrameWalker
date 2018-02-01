@@ -7,7 +7,7 @@ from framewalker import DB
 from framewalker import JavaScript
 import csv
 
-driver = None
+_driver = None
 transactionTimeStamp = ''
 mainNavigationStart = 0
 testRun = None
@@ -24,9 +24,9 @@ CSVlogFilePath = ''
 
 #-----------Init and setters-----------#
 
-def init(_driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoadedInsterval=3, _resourceFilter=None, _frameFilter=None, _consoleLog=False, _CSVlogFilePath=''):
+def init(driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTimeOut=60, _waitForLoadedInsterval=3, _resourceFilter=None, _frameFilter=None, _consoleLog=False, _CSVlogFilePath=''):
     global testRun
-    global driver
+    global _driver
     global waitForLoadedTimeOut
     global waitForLoadedInsterval
     global verbosity
@@ -34,9 +34,9 @@ def init(_driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTime
     global frameFilter
     global consoleLog
     global CSVlogFilePath
-    driver = _driver
-    JavaScript.setDriver(driver)
-    testRun = DB.insertTestRun(timeStamp(), _product, _release, _comment)
+    _driver = driver
+    JavaScript.set_driver(driver)
+    testRun = DB.insert_test_run(time_stamp(), _product, _release, _comment)
     waitForLoadedTimeOut = _waitForLoadedTimeOut
     waitForLoadedInsterval = _waitForLoadedInsterval
     verbosity = _verbosity
@@ -45,22 +45,23 @@ def init(_driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTime
     consoleLog = _consoleLog
     CSVlogFilePath = _CSVlogFilePath
     if CSVlogFilePath != '':
-        CSVLogInit()
+        csv_log_init()
 
-def setDriver(_driver):
-    global driver
-    driver = _driver
-    JavaScript.setDriver(driver)
 
-def setIteration(iterationNumber):
+def set_driver(driver):
+    global _driver
+    _driver = driver
+    JavaScript.set_driver(driver)
+
+def set_iteration(iterationNumber):
     global iteration
     iteration = iterationNumber
 
-def increaseIteration():
+def increase_iteration():
     global iteration
     iteration += 1
 
-def setLoadInterval(loadinterval):
+def set_load_interval(loadinterval):
     global waitForLoadedInsterval
     waitForLoadedInsterval = loadinterval
 
@@ -69,72 +70,73 @@ def setLoadInterval(loadinterval):
 def report(transactionName):
     global transaction
     if verbosity > 0:
-        transaction = DB.insertTransaction(testRun.test_run_id, timeStamp(), transactionName, iteration)
-        driver.switch_to.default_content()
-        timing = waitForTimingReady()
-        saveFrame(timing, {'src': driver.current_url}, '0')
-        saveIFrames('0')
-        JavaScript.clearResourceTimings()
-        driver.switch_to.default_content()
+        transaction = DB.insert_transaction(testRun.test_run_id, time_stamp(), transactionName, iteration)
+        _driver.switch_to.default_content()
+        timing = wait_for_timing_ready()
+        save_frame(timing, {'src': _driver.current_url}, '0')
+        save_iframes('0')
+        JavaScript.clear_resource_timings()
+        _driver.switch_to.default_content()
         if not frameFilter is None and len(frameFilter) > 0:
-            DB.filterFrames(transaction, frameFilter)
-        if DB.transactionHasFrames(transaction):
-            DB.addTransactionTimes(transaction)
-            DB.addFrameTimes(transaction)
-            DB.addTimingTimes(transaction)
-            if verbosity == 3:
+            DB.filter_frames(transaction, frameFilter)
+        if DB.transaction_has_frames(transaction):
+            DB.add_transaction_times(transaction)
+            DB.add_frame_times(transaction)
+            DB.add_timing_times(transaction)
+            if verbosity > 2:
                 if not frameFilter is None and len(resourceFilter) > 0:
-                    DB.filterResources(transaction, resourceFilter)
-                DB.addResourceTimes(transaction)
-    transaction = DB.TransactionById(transaction.transaction_id)
+                    DB.filter_resources(transaction, resourceFilter)
+                DB.add_resource_times(transaction)
+    transaction = DB.transaction_by_id(transaction.transaction_id)
     if consoleLog:
-        printConsoleLog()
+        print_console_log()
     if CSVlogFilePath != '':
-        printCSVLog(message="")
+        print_csv_log(message="")
 
 
-def saveFrame(timing, attributes, frameStructureId):
+def save_frame(timing, attributes, frameStructureId):
     src = attributes.get('src')
-    if DB.frameAlreadyExist(testRun, iteration, timing):
-        if JavaScript.getNbrOfResources() > 0:
-            frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
-            resources = waitForResourcesReady(timing)
-            saveResources(frame, resources)
+    if DB.frame_already_exist(testRun, iteration, timing):
+        if JavaScript.get_nbr_of_resources() > 0:
+            frame = DB.insert_frame(transaction.transaction_id, '{' + frameStructureId + '}', truncated_src(src), hashed_src(src), json.dumps(attributes))
+            resources = wait_for_resources_ready(timing)
+            save_resources(frame, resources)
     else:
         if src is not None:
-            frame = DB.insertFrame(transaction.transaction_id, '{' + frameStructureId + '}', truncatedSRC(src), hashedSRC(src), json.dumps(attributes))
-            saveTiming(frame, timing)
-            if verbosity == 3:
-                resources = waitForResourcesReady(timing)
-                saveResources(frame, resources)
+            frame = DB.insert_frame(transaction.transaction_id, '{' + frameStructureId + '}', truncated_src(src), hashed_src(src), json.dumps(attributes))
+            save_timing(frame, timing)
+            if verbosity > 2:
+                resources = wait_for_resources_ready(timing)
+                save_resources(frame, resources)
 
 
-def saveIFrames(frameStructureId):
+def save_iframes(frameStructureId):
     try:
-        iFrames = driver.find_elements_by_tag_name('iframe')
+        iFrames = _driver.find_elements_by_tag_name('iframe')
     except NoSuchElementException:
         return
     for nbr, iFrame in enumerate(iFrames):
         recFrameStructureId = frameStructureId + "," + str(nbr)
         try:
-            attributes = JavaScript.getAttributes(iFrame)
-            driver.switch_to.frame(iFrame)
+            attributes = JavaScript.get_attributes(iFrame)
+            _driver.switch_to.frame(iFrame)
         except Exception:
-            JavaScript.clearResourceTimings()
+            JavaScript.clear_resource_timings()
             return
-        timing = waitForTimingReady()
-        saveFrame(timing, attributes, recFrameStructureId)
-        JavaScript.clearResourceTimings()
-        currentWindow = driver.current_window_handle
-        saveIFrames(recFrameStructureId)
-        driver.switch_to.window(currentWindow)
+        timing = wait_for_timing_ready()
+        save_frame(timing, attributes, recFrameStructureId)
+        JavaScript.clear_resource_timings()
+        #currentWindow = _driver.current_window_handle
+        save_iframes(recFrameStructureId)
+        _driver.switch_to.parent_frame()
+        #_driver.switch_to.window(currentWindow)
 
 #-----------Help Functions-----------#
 
-def waitForTimingReady():
+def wait_for_timing_ready():
     time.sleep(1)
     for x in range(1, int(waitForLoadedTimeOut)):
-        timing = getTiming()
+        timing = get_timing()
         connectEnd = timing['loadEventEnd']
         if connectEnd != 0:
             return timing
@@ -142,12 +144,12 @@ def waitForTimingReady():
     return None
 
 
-def waitForResourcesReady(timing):
-    if JavaScript.getNbrOfResources() == 0:
+def wait_for_resources_ready(timing):
+    if JavaScript.get_nbr_of_resources() == 0:
         return None
     for x in range(1, int(waitForLoadedTimeOut)):
-        unixTime = JavaScript.unixTimeStamp()
-        resources = getResources(timing)
+        unixTime = JavaScript.unix_time_stamp()
+        resources = get_resources(timing)
         a = max(resources, key=lambda x:x['resource_absolute_end_time'])
         if unixTime - a['resource_absolute_end_time'] > waitForLoadedInsterval*1000:
             return resources
@@ -155,8 +157,8 @@ def waitForResourcesReady(timing):
     return None
 
 
-def getTiming():
-    timing = JavaScript.getTiming()
+def get_timing():
+    timing = JavaScript.get_timing()
     timing['timing_redirect'] = timing['fetchStart']-timing['navigationStart']
     timing['timing_appcache'] = timing['domainLookupStart'] - timing['fetchStart']
     timing['timing_dns'] = timing['domainLookupEnd'] - timing['domainLookupStart']
@@ -170,8 +172,8 @@ def getTiming():
     return timing
 
 
-def getResources(timing):
-    resources = JavaScript.getResources()
+def get_resources(timing):
+    resources = JavaScript.get_resources()
     res = []
     for d in resources:
         r={}
@@ -185,16 +187,16 @@ def getResources(timing):
     return res
 
 
-def saveTiming(frame, timing):
-    DB.insertTiming(frame.frame_id, timing)
+def save_timing(frame, timing):
+    DB.insert_timing(frame.frame_id, timing)
 
 
-def saveResources(frame, resources):
-    DB.insertRecources(frame.frame_id, resources)
+def save_resources(frame, resources):
+    DB.insert_recources(frame.frame_id, resources)
 
 #-----------Log-----------#
 
-def printConsoleLog():
+def print_console_log():
     template = "{0:5}{1:30}{2:10}"
     Red = '\033[91m'
     Black = '\033[90m'
@@ -207,7 +209,7 @@ def printConsoleLog():
         color = Black
     print(color + template.format(str(transaction.transaction_iteration), transaction.transaction_name, str(transaction.transaction_time)))
 
-def CSVLogInit():
+def csv_log_init():
     global CSVlogFilePath
     CSVfilename = datetime.now().strftime(r'\log_%Y-%m-%d_%H-%M-%S.csv')
     CSVlogFilePath = CSVlogFilePath + CSVfilename
@@ -216,7 +218,7 @@ def CSVLogInit():
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
-def printCSVLog(message):
+def print_csv_log(message):
     with open(CSVlogFilePath, 'a', newline='') as csvfile:
         fieldnames = ['timestamp', 'transaction', 'iteration', 'elapsed', 'message']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -224,15 +226,15 @@ def printCSVLog(message):
 
 #-----------Misc-----------#
 
-def hashedSRC(src):
+def hashed_src(src):
     return hashlib.md5(src.encode('utf-8')).hexdigest()[:12]
 
 
-def truncatedSRC(src):
+def truncated_src(src):
     if len(src) > 50:
         src = src[:23] + '....' + src[-23:]
     return src
 
 
-def timeStamp():
+def time_stamp():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')

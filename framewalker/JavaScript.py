@@ -1,84 +1,50 @@
 import json
-import time
 import sys
+import time
 
-driver = None
+_driver = None
 javaExceptionWaitTime = 10
 
-def setDriver(_driver):
-    global driver
-    driver = _driver
 
-def getTiming():
+def set_driver(driver):
+    global _driver
+    _driver = driver
+
+
+def execute_script(script, arg=''):
     for x in range(1, javaExceptionWaitTime):
         try:
-            return json.loads(driver.execute_script("return JSON.stringify(window.performance.timing)"))
-        except Exception:
+            return _driver.execute_script(script, arg)
+        except Exception as e:
+            print('Javascript.execute_script wait ' + str(x) + ' seconds due to ' + str(type(e)))
             time.sleep(1)
-    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
+    print('Javascript error in ' + sys._getframe().f_code.co_name)
+    raise e
 
 
-def getResources():
-    for x in range(1, javaExceptionWaitTime):
-        try:
-            return json.loads(driver.execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))
-        except Exception:
-            time.sleep(1)
-    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
+def get_timing():
+    return json.loads(execute_script("return JSON.stringify(window.performance.timing)"))
 
 
-def getNbrOfResources():
-    for x in range(1, javaExceptionWaitTime):
-        try:
-            return driver.execute_script("return window.performance.getEntriesByType('resource').length")
-        except Exception:
-            time.sleep(1)
-    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
+def get_resources():
+    return json.loads(execute_script("return JSON.stringify(window.performance.getEntriesByType('resource'))"))
 
 
-def clearResourceTimings():
-    for x in range(1, javaExceptionWaitTime):
-        try:
-            return driver.execute_script("return window.performance.clearResourceTimings()")
-        except Exception:
-            time.sleep(1)
-    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
+def get_nbr_of_resources():
+    return execute_script("return window.performance.getEntriesByType('resource').length")
 
 
-def getAttributes(element):
-    for x in range(1, javaExceptionWaitTime):
-        try:
-            return driver.execute_script("var items = {}; "
-                                 "for (index = 0; index < arguments[0].attributes.length; ++index) "
-                                 "{ items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value }; "
-                                 "return items;"
-                                 , element)
-        except Exception:
-            time.sleep(1)
-    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
+def clear_resource_timings():
+    execute_script("return window.performance.clearResourceTimings()")
 
 
-def unixTimeStamp():
-    for x in range(1, javaExceptionWaitTime):
-        try:
-            return driver.execute_script("return Date.now()")
-        except Exception:
-            time.sleep(1)
-    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
+def get_attributes(element):
+    return execute_script("var items = {}; for (index = 0; index < arguments[0].attributes.length; ++index) { items[arguments[0].attributes[index].name] = arguments[0].attributes[index].value }; return items;", element)
 
 
-def setCookie(cookieName, cookieValue):
-    for x in range(1, javaExceptionWaitTime):
-        try:
-            return driver.execute_script("document.cookie='%s=%s'" % (cookieName,cookieValue))
-        except Exception:
-            time.sleep(1)
-    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
+def unix_time_stamp():
+    return execute_script("return Date.now()")
 
-def removeUserProperties():
-    for x in range(1, javaExceptionWaitTime):
-        try:
-            return driver.execute_script("localStorage.clear()")
-        except Exception:
-            time.sleep(1)
-    raise ValueError('JavaScrip error in ' + sys._getframe().f_code.co_name)
+
+def remove_user_properties():
+    return execute_script("return localStorage.clear()")

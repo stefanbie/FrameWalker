@@ -95,7 +95,8 @@ def init(_schemaName, _host, _port, _user, _password):
     DB.init(_schemaName, host=_host, port=_port, user=_user, password=_password)
     DB.connect()
     if not TestRun.table_exists():
-        addTables()
+        add_tables()
+
 
 class BaseModel(Model):
     class Meta:
@@ -182,22 +183,22 @@ class Resource(BaseModel):
     resource_time = IntegerField(default=-1)
 
 
-def addTables():
+def add_tables():
     DB.create_tables([TestRun, Transaction, Frame, Resource, Timing])
 
 
-def insertTestRun(timeStamp, product, release, comment):
+def insert_test_run(timeStamp, product, release, comment):
     return TestRun.create(test_run_timestamp=timeStamp, test_run_product=product, test_run_release=release, test_run_comment=comment)
 
 
-def insertTransaction(testRunID, timeStamp, transactionName, iteration):
+def insert_transaction(testRunID, timeStamp, transactionName, iteration):
     return Transaction.create(test_run=testRunID,
                               transaction_timestamp=timeStamp,
                               transaction_name=transactionName,
                               transaction_iteration=iteration)
 
 
-def insertFrame(transactionID, frameStructureId, src, hashedSrc, attributes):
+def insert_frame(transactionID, frameStructureId, src, hashedSrc, attributes):
     return Frame.create(transaction=transactionID,
                         frame_structure_id=frameStructureId,
                         frame_src=src,
@@ -205,12 +206,12 @@ def insertFrame(transactionID, frameStructureId, src, hashedSrc, attributes):
                         frame_attributes=attributes)
 
 
-def insertTiming(frameID, timing):
+def insert_timing(frameID, timing):
     timing["frame"] = frameID
     return Timing.insert(timing).execute()
 
 
-def insertRecources(frameID, recourse):
+def insert_recources(frameID, recourse):
     if not recourse is None:
         if len(recourse) > 0:
             for item in recourse:
@@ -220,7 +221,7 @@ def insertRecources(frameID, recourse):
     return None
 
 
-def addTransactionTimes(transaction):
+def add_transaction_times(transaction):
     # Add transaction_start_time
     timingStartTimes = Timing\
         .select(Timing.navigationStart.alias('starttime'))\
@@ -251,8 +252,8 @@ def addTransactionTimes(transaction):
         .execute()
 
 
-def addFrameTimes(transaction):
-    transactionStartTime = TransactionStartTime(transaction)
+def add_frame_times(transaction):
+    transactionStartTime = transaction_start_time(transaction)
     frames = Frame.select().where(Frame.transaction == transaction.transaction_id).execute()
     for frame in frames:
         # Add frame_relative_start_time
@@ -281,8 +282,8 @@ def addFrameTimes(transaction):
             .execute()
 
 
-def addTimingTimes(transaction):
-    transactionStartTime = TransactionStartTime(transaction)
+def add_timing_times(transaction):
+    transactionStartTime = transaction_start_time(transaction)
     query = 'update timing ' \
             'join frame ' \
             'on frame.frame_id = timing.frame_id ' \
@@ -292,8 +293,8 @@ def addTimingTimes(transaction):
     DB.execute_sql(query)
 
 
-def addResourceTimes(transaction):
-    transactionStartTime = TransactionStartTime(transaction)
+def add_resource_times(transaction):
+    transactionStartTime = transaction_start_time(transaction)
     # Add resource_relative_start_time
     query = 'update resource ' \
             'join frame ' \
@@ -342,77 +343,78 @@ def addResourceTimes(transaction):
             .where(Frame.frame_id == frame.frame_id).execute()
 
 
-def TransactionStartTime(transaction):
+def transaction_start_time(transaction):
     return Transaction\
         .select(Transaction)\
         .where(Transaction.transaction_id == transaction.transaction_id)\
         .get().transaction_start_time
 
-def TransactionById(transactionId):
+
+def transaction_by_id(transactionId):
     return Transaction\
         .select(Transaction)\
         .where(Transaction.transaction_id == transactionId)\
         .get()
 
-def TransactionTime(transactionId):
-    return Transaction\
-        .select(Transaction)\
-        .where(Transaction.transaction_id == transactionId)\
-        .get().transaction_time
 
-def deleteTestRuns(testRunIds):
+def delete_test_runs(testRunIds):
     for testRunId in testRunIds:
         transactionIds = Transaction.select(Transaction.transaction_id).where(Transaction.test_run == testRunId).execute()
-        deleteTransactions(transactionIds)
+        delete_transactions(transactionIds)
         TestRun.delete().where(TestRun.test_run_id == testRunId).execute()
 
-def deleteTransactions(transactionIds):
+
+def delete_transactions(transactionIds):
     for transactionId in transactionIds:
         frameIds = Frame.select(Frame.frame_id).where(Frame.transaction == transactionId).execute()
-        deleteFrames(frameIds)
+        delete_frames(frameIds)
         Transaction.delete().where(Transaction.transaction_id == transactionId).execute()
 
-def deleteFrames(frameIds):
+
+def delete_frames(frameIds):
     for frameId in frameIds:
         timingIds = Timing.select(Timing.timing_id).where(Timing.frame == frameId).execute()
-        deleteTimings(timingIds)
+        delete_timings(timingIds)
         resourceIds = Resource.select(Resource.resource_id).where(Resource.frame == frameId).execute()
-        deleteResources(resourceIds)
+        delete_resources(resourceIds)
         Frame.delete().where(Frame.frame_id == frameId).execute()
 
-def deleteTimings(timingIds):
+
+def delete_timings(timingIds):
     for timingId in timingIds:
         Timing.delete().where(Timing.timing_id == timingId).execute()
 
-def deleteResources(resourceIds):
+def delete_resources(resourceIds):
     for resourceId in resourceIds:
         Resource.delete().where(Resource.resource_id == resourceId).execute()
 
-def filterFrames(transaction, frameFilter):
+
+def filter_frames(transaction, frameFilter):
     for filteredFrame in frameFilter:
-        frameIds = Frame.select(Frame.frame_id).join(Transaction).where(Transaction.transaction_id == transaction.transaction_id and Frame.frame_src.contains(filteredFrame)).execute()
-        deleteFrames(frameIds)
+        transactionFrames = Frame.select(Frame.frame_id).where(Frame.transaction == transaction.transaction_id)
+        filteredFrames = transactionFrames.select().where(Frame.frame_attributes.contains(filteredFrame)).execute()
+        delete_frames(filteredFrames)
 
-def filterResources(transaction, resourceFilter):
-    query = 'delete r ' \
-            'from resource r ' \
-            'inner join frame f ' \
-            'on r.frame_id = f.frame_id ' \
-            'inner join transaction tr ' \
-            'on f.transaction_id = tr.transaction_id ' \
-            'where tr.transaction_id = {0} ' \
-            'and r.resource_name in {1}'.format(transaction.transaction_id,
-                                                str(resourceFilter).replace('[', '(').replace(']', ')'))
-    DB.execute_sql(query)
 
-def testRuns():
+def filter_resources(transaction, resourceFilter):
+    for res in resourceFilter:
+        query = Resource.select().join(Frame).join(Transaction).where(Resource.resource_name.contains(res), Transaction.transaction_id == transaction.transaction_id)
+        q = query.execute()
+        for a in q:
+            a.delete_instance()
+
+
+def test_runs():
     return TestRun.select().execute()
+
 
 def transactions(testRunId):
     return Transaction.select().where(Transaction.test_run == testRunId).execute()
 
-def transactionCount(testRunId):
+
+def transaction_count(testRunId):
     return Transaction.select().where(Transaction.test_run == testRunId).count()
+
 
 def comment(testRunId):
     try:
@@ -420,10 +422,12 @@ def comment(testRunId):
     except:
         return None
 
-def updateComment(testRunId, comment):
+
+def update_comment(testRunId, comment):
     TestRun.update(test_run_comment = comment).where(TestRun.test_run_id == testRunId).execute()
 
-def frameAlreadyExist(testRun, iteration, timing):
+
+def frame_already_exist(testRun, iteration, timing):
    return Timing.select() \
               .join(Frame) \
               .join(Transaction) \
@@ -433,25 +437,17 @@ def frameAlreadyExist(testRun, iteration, timing):
                      & (TestRun.test_run_id == testRun.test_run_id)) \
               .execute().count > 0
 
-def transactionHasFrames(transaction):
+
+def transaction_has_frames(transaction):
     return Frame.select().where(Frame.transaction == transaction.transaction_id).execute().count > 0
 
-def frameStructureList(testRunId):
-    query = 'select distinct transaction.transaction_name, frame.frame_structure_id from frame ' \
-            'join transaction on frame.transaction_id = transaction.transaction_id ' \
-            'where transaction.test_run_id=' + str(testRunId) +' and frame.frame_src not like "%%startpage%%" and transaction_iteration = 2 order by transaction_name'
-    return DB.execute_sql(query)
-
-def transactionTimes(testrun_id):
-    return Transaction.select(Transaction.transaction_name, fn.Avg(Transaction.transaction_time))\
-        .where((Transaction.test_run == testrun_id) & (Transaction.transaction_time != -1) & (Transaction.transaction_iteration != 1))\
-        .group_by(Transaction.transaction_name)
 
 def reconnect():
     destroy()
     DB.connect()
     if not TestRun.table_exists():
-        addTables()
+        add_tables()
+
 
 def destroy():
     DB.close()
