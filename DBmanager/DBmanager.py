@@ -66,7 +66,7 @@ def update_comment():
     print("\nCurrent comment for test case ID " + test_run + " is: \"" + str(current_comment) + "\"")
     new_comment = '{}'.format(input("Enter new comment : "))
     if new_comment:
-        DB.updateComment(test_run, new_comment)
+        DB.update_comment(test_run, new_comment)
     else:
         print("Empty comment given! Aborting...")
         return
@@ -107,7 +107,7 @@ def delete_transactions():
         return
 
     print('\n')
-    DB.deleteTransactions(selection)
+    DB.delete_transactions(selection)
 
     transactions = DB.transactions(testrun_id)
     print(template.format('Transaction ID', 'Name', 'Iteration', 'Time'))
@@ -123,7 +123,7 @@ def delete_test_runs():
         return
 
     print('\n')
-    DB.deleteTestRuns(selection)
+    DB.delete_test_runs(selection)
     '''
     for n in selection:
         if n in ids:
@@ -134,7 +134,7 @@ def delete_test_runs():
     '''
 DB.init(_schemaName='framewalker', _host='127.0.0.1', _port=3306, _user='dbuser', _password='admin')
 while True:
-    testruns = DB.testRuns()
+    testruns = DB.test_runs()
 
     template = "{0:20}{1:30}{2:20}{3:25}{4:10}{5:50}"
     print("\n====================== [ DATABASE CONTENTS ] ======================\n")
@@ -142,7 +142,7 @@ while True:
 
     for testrun in testruns:
         testRunId = testrun.test_run_id
-        transactionCount = DB.transactionCount(testRunId)
+        transactionCount = DB.transaction_count(testRunId)
         print(template.format(str(testrun.test_run_id), str(testrun.test_run_timestamp), str(transactionCount), str(testrun.test_run_product), str(testrun.test_run_release), str(testrun.test_run_comment)))
 
     ids = [testrun.test_run_id for testrun in testruns]
