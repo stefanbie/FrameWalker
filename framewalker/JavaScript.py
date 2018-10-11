@@ -48,3 +48,8 @@ def unix_time_stamp():
 
 def remove_user_properties():
     return execute_script("return localStorage.clear()")
+
+def get_entries_by_type(type):
+    return json.loads(execute_script("return JSON.stringify(window.performance.getEntriesByType(arguments[0]))",type))
+
+
