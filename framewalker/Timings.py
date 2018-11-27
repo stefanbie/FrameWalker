@@ -36,10 +36,11 @@ def init(driver, _product, _release, _comment, _verbosity=3, _waitForLoadedTimeO
     global CSVlogFilePath
     _driver = driver
     JavaScript.set_driver(driver)
-    testRun = DB.insert_test_run(time_stamp(), _product, _release, _comment)
+    verbosity = _verbosity
+    if verbosity > 0:
+        testRun = DB.insert_test_run(time_stamp(), _product, _release, _comment)
     waitForLoadedTimeOut = _waitForLoadedTimeOut
     waitForLoadedInsterval = _waitForLoadedInsterval
-    verbosity = _verbosity
     resourceFilter = _resourceFilter
     frameFilter = _frameFilter
     consoleLog = _consoleLog
@@ -87,11 +88,11 @@ def report(transactionName):
                 if not frameFilter is None and len(resourceFilter) > 0:
                     DB.filter_resources(transaction, resourceFilter)
                 DB.add_resource_times(transaction)
-    transaction = DB.transaction_by_id(transaction.transaction_id)
-    if consoleLog:
-        print_console_log()
-    if CSVlogFilePath != '':
-        print_csv_log(message="")
+        transaction = DB.transaction_by_id(transaction.transaction_id)
+        if consoleLog:
+            print_console_log()
+        if CSVlogFilePath != '':
+            print_csv_log(message="")
 
 
 def save_frame(timing, attributes, frameStructureId):
