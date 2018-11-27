@@ -33,6 +33,8 @@ def get_resources():
 def get_nbr_of_resources():
     return execute_script("return window.performance.getEntriesByType('resource').length")
 
+def resource_by_name(name):
+    return json.loads(execute_script("return JSON.stringify(window.performance.getEntriesByName('NewsWpLoaded', 'mark'))"))
 
 def clear_resource_timings():
     execute_script("return window.performance.clearResourceTimings()")
